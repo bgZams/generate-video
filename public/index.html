@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinity VidGen | Programmatic Video Creator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    
+    <div class="app-container">
+        <header>
+            <h1>Infinity <span>VidGen</span></h1>
+            <p>Generate Unlimited, Free, and Fast Programmatic Videos.</p>
+        </header>
+
+        <main>
+            <form id="video-form">
+                <!-- Settings Panel -->
+                <div class="glass-panel settings-panel">
+                    <h2>Global Settings</h2>
+                    
+                    <div class="form-group">
+                        <label for="resolution">Video Resolution</label>
+                        <select id="resolution" name="resolution">
+                            <option value="9:16">Portrait 9:16 (Shorts / TikTok)</option>
+                            <option value="16:9">Landscape 16:9 (YouTube)</option>
+                            <option value="1:1">Square 1:1 (Instagram)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bgm_audio">Background Music (MP3)</label>
+                        <input type="file" id="bgm_audio" name="bgm_audio" accept="audio/mpeg">
+                        <small>Or leave blank. Auto <strong>No-Copyright Music</strong> will be applied automatically.</small>
+                    </div>
+                </div>
+
+                <!-- Slides Container -->
+                <div class="slides-container" id="slides-container">
+                <div class="glass-panel slide-item" data-index="0">
+                        <div class="slide-header">
+                            <h3>Slide 1</h3>
+                            <button type="button" class="btn-icon delete-slide" disabled>&times;</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Narration Text & Subtitles</label>
+                            <textarea name="slide_text_0" placeholder="Type the text you want the AI voice to speak..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Background Image</label>
+                            <div class="image-source-tabs">
+                                <label class="tab-option active">
+                                    <input type="radio" name="slide_imgsrc_0" value="auto" checked>
+                                    <span>🔍 Auto</span>
+                                </label>
+                                <label class="tab-option">
+                                    <input type="radio" name="slide_imgsrc_0" value="upload">
+                                    <span>📁 Upload</span>
+                                </label>
+                                <label class="tab-option">
+                                    <input type="radio" name="slide_imgsrc_0" value="url">
+                                    <span>🔗 URL</span>
+                                </label>
+                                <label class="tab-option">
+                                    <input type="radio" name="slide_imgsrc_0" value="ref">
+                                    <span>🖇️ Same as...</span>
+                                </label>
+                            </div>
+                            <div class="image-input-area" data-mode="auto">
+                                <div class="auto-search-info">
+                                    <small>✨ Image will be automatically searched based on your narration text above.</small>
+                                </div>
+                                <div class="upload-area" style="display:none;">
+                                    <input type="file" name="slide_img_0" accept="image/*">
+                                </div>
+                                <div class="url-area" style="display:none;">
+                                    <input type="url" name="slide_url_0" placeholder="https://domain.com/image.jpg">
+                                </div>
+                                <div class="ref-area" style="display:none;">
+                                    <select name="slide_ref_0" class="ref-select">
+                                        <option value="">-- Pilih Slide --</option>
+                                    </select>
+                                    <small>🖇️ Gambar yang sama akan digunakan, tapi dengan efek gerak berbeda agar tetap dinamis.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <div class="add-slide-group">
+                        <input type="number" id="slide-count-input" min="1" max="50" value="1" placeholder="1">
+                        <button type="button" id="btn-add-slide" class="btn-secondary">+ Add Slides</button>
+                    </div>
+                    <button type="submit" id="btn-generate" class="btn-primary">
+                        <span class="btn-text">Generate Video</span>
+                        <div class="spinner" style="display: none;"></div>
+                    </button>
+                </div>
+            </form>
+
+            <div id="result-container" class="glass-panel result-panel" style="display: none;">
+                <h2>🎬 Ready to Watch!</h2>
+                <video id="result-video" controls></video>
+                <a id="download-btn" href="#" download="generated_video.mp4" class="btn-primary">Download MP4</a>
+            </div>
+            
+            <!-- Progress Overlay -->
+            <div id="progress-overlay" class="overlay" style="display: none;">
+                <div class="glass-panel progress-box">
+                    <div class="spinner-large"></div>
+                    <h3 id="progress-text">Rendering Video...</h3>
+                    <p>This may take a few moments depending on the slide count.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
