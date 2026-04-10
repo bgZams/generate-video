@@ -383,14 +383,46 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
 
         if (bgmPath && fs.existsSync(bgmPath)) {
             console.log("  Mixing BGM...");
-            const filterComplex = '[0:a]volume=1.0[a1];[1:a]aloop=loop=-1:size=2e+09,volume=0.15[a2];[a1][a2]amix=inputs=2:duration=first:dropout_transition=2[aout]';
-            runFFmpeg([
-                '-y', '-i', concatedPath, '-i', bgmPath,
-                '-filter_complex', filterComplex,
-                '-map', '0:v', '-map', '[aout]',
-                '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
-                finalOutputPath
-            ]);
+            // Extract pure audio from BGM (Pexels sends video files, not audio)
+            const bgmAudioPath = path.join(tempDir, 'bgm_audio_extracted.aac');
+            let audioExtracted = false;
+            
+            try {
+                runFFmpeg([
+                    '-y', '-i', bgmPath,
+                    '-vn', '-acodec', 'aac', '-b:a', '128k',
+                    bgmAudioPath
+                ]);
+                // Verify extraction succeeded
+                if (fs.existsSync(bgmAudioPath) && fs.statSync(bgmAudioPath).size > 1000) {
+                    console.log("  ✅ BGM audio extracted successfully");
+                    audioExtracted = true;
+                }
+            } catch (e) {
+                console.log(`  ⚠️ BGM extraction failed: ${e.message}`);
+                audioExtracted = false;
+            }
+
+            // Only mix if audio extraction was successful
+            if (audioExtracted) {
+                const filterComplex = '[0:a]volume=1.0[a1];[1:a]aloop=loop=-1:size=2e+09,volume=0.5[a2];[a1][a2]amix=inputs=2:duration=first:dropout_transition=2[aout]';
+                try {
+                    runFFmpeg([
+                        '-y', '-i', concatedPath, '-i', bgmAudioPath,
+                        '-filter_complex', filterComplex,
+                        '-map', '0:v', '-map', '[aout]',
+                        '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
+                        finalOutputPath
+                    ]);
+                    console.log("  ✅ BGM mixed successfully");
+                } catch (e) {
+                    console.log(`  ⚠️ BGM mixing failed: ${e.message}, skipping BGM`);
+                    fs.copyFileSync(concatedPath, finalOutputPath);
+                }
+            } else {
+                console.log("  ⚠️ BGM has no audio track, skipping music");
+                fs.copyFileSync(concatedPath, finalOutputPath);
+            }
         } else {
             fs.copyFileSync(concatedPath, finalOutputPath);
         }

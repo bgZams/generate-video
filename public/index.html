@@ -24,6 +24,12 @@
                 <!-- Settings Panel -->
                 <div class="glass-panel settings-panel">
                     <h2>Global Settings</h2>
+
+                    <div class="form-group">
+                        <label for="story_title">Judul Video</label>
+                        <input type="text" id="story_title" name="story_title" placeholder="Judul akan terisi otomatis saat memilih hasil AI, atau bisa Anda isi manual.">
+                        <small>Judul ini akan disimpan ke histori agar Anda tahu tema mana yang sudah pernah dipakai.</small>
+                    </div>
                     
                     <div class="form-group">
                         <label for="resolution">Video Resolution</label>
@@ -38,6 +44,92 @@
                         <label for="bgm_audio">Background Music (MP3)</label>
                         <input type="file" id="bgm_audio" name="bgm_audio" accept="audio/mpeg">
                         <small>Or leave blank. Auto <strong>No-Copyright Music</strong> will be applied automatically.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bgm_mood">Music Mood (for auto-selection)</label>
+                        <select id="bgm_mood" name="bgm_mood">
+                            <option value="upbeat">🎵 Upbeat (Happy, energetic, fun)</option>
+                            <option value="calm">😌 Calm (Relaxing, peaceful, meditative)</option>
+                            <option value="dramatic">🎬 Dramatic (Intense, powerful, suspenseful)</option>
+                            <option value="cinematic">🎥 Cinematic (Epic, grand, orchestral)</option>
+                            <option value="corporate">💼 Corporate (Professional, business, jazzy)</option>
+                            <option value="chill">❄️ Chill (Lo-fi, ambient, lounge)</option>
+                            <option value="motivational">🚀 Motivational (Inspiring, uplifting, epic)</option>
+                            <option value="dark">🌙 Dark (Eerie, mysterious, horror)</option>
+                        </select>
+                        <small>Used only if no file is uploaded. Best with AI-generated titles for topic-based selection.</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="narrator_voice">Narrator Voice</label>
+                            <select id="narrator_voice" name="narrator_voice">
+                                <option value="shimmer">🎀 Shimmer (Soft Female)</option>
+                                <option value="nova">✨ Nova (Bright Female)</option>
+                                <option value="alloy">🎤 Alloy (Neutral Female)</option>
+                                <option value="fable">🎧 Fable (Warm Male)</option>
+                                <option value="onyx">🎺 Onyx (Deep Male)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="narrator_speed">Narration Speed</label>
+                            <select id="narrator_speed" name="narrator_speed">
+                                <option value="0.75">🐢 Slow (0.75x)</option>
+                                <option value="1.0" selected>▶️ Normal (1.0x)</option>
+                                <option value="1.25">⏩ Fast (1.25x)</option>
+                                <option value="1.5">⏭️ Faster (1.5x)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel ai-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>AI Judul & Narasi</h2>
+                            <p>Buat beberapa ide judul lengkap dengan narasi per slide langsung dari OpenAI API key Anda.</p>
+                        </div>
+                        <button type="button" id="btn-refresh-history" class="btn-secondary compact-btn">Refresh History</button>
+                    </div>
+
+                    <div class="ai-grid">
+                        <div class="form-group">
+                            <label for="openai_model">Model</label>
+                            <select id="openai_model">
+                                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                                <option value="gpt-4">gpt-4</option>
+                                <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="ai-grid">
+                        <div class="form-group">
+                            <label for="idea_topic">Tema / Brief</label>
+                            <textarea id="idea_topic" placeholder="Contoh: Fakta unik hewan laut, tips usaha rumahan, sejarah singkat tokoh dunia, dll."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="idea_count">Jumlah Ide</label>
+                            <input type="number" id="idea_count" min="1" max="10" value="5">
+                            <small>Jumlah slide akan mengikuti jumlah slide yang ada di form saat ini.</small>
+                        </div>
+                    </div>
+
+                    <div class="ai-actions">
+                        <button type="button" id="btn-generate-ideas" class="btn-primary">Generate Judul & Narasi</button>
+                        <span id="idea-status" class="status-text">Belum ada ide yang digenerate.</span>
+                    </div>
+
+                    <div class="ai-results">
+                        <div>
+                            <h3>Hasil AI</h3>
+                            <div id="idea-results" class="idea-list empty-state">Belum ada hasil. Isi brief lalu generate.</div>
+                        </div>
+                        <div>
+                            <h3>Riwayat Judul</h3>
+                            <div id="history-results" class="idea-list empty-state">Memuat histori judul...</div>
+                        </div>
                     </div>
                 </div>
 

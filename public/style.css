@@ -130,7 +130,15 @@ header p {
     font-size: 0.8rem;
 }
 
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
 input[type="text"],
+input[type="password"],
+input[type="number"],
 input[type="url"],
 select,
 textarea {
@@ -151,6 +159,8 @@ textarea {
 }
 
 input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
 input[type="url"]:focus,
 select:focus,
 textarea:focus {
@@ -485,4 +495,178 @@ button {
 
 .tab-option {
     min-width: calc(25% - 0.5rem);
+}
+
+.panel-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.panel-heading h2,
+.ai-results h3 {
+    font-family: 'Outfit', sans-serif;
+    color: #fff;
+}
+
+.panel-heading p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-top: 0.4rem;
+}
+
+.compact-btn {
+    flex: none;
+    white-space: nowrap;
+    padding: 0.75rem 1rem;
+}
+
+.ai-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
+    gap: 1rem;
+}
+
+.ai-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.status-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.error-text {
+    color: #fca5a5;
+}
+
+.ai-results {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.idea-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    max-height: 720px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.empty-state {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 1rem;
+    color: var(--text-secondary);
+}
+
+.idea-card {
+    background: rgba(15, 23, 42, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 1rem;
+}
+
+.idea-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.idea-card-header h4 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    margin-bottom: 0.35rem;
+}
+
+.idea-card-header p {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.idea-badge {
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.idea-badge.fresh {
+    color: #bfdbfe;
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.28);
+}
+
+.idea-badge.used {
+    color: #fcd34d;
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.25);
+}
+
+.idea-narration {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+}
+
+.idea-narration li {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    padding: 0.7rem 0.8rem;
+    line-height: 1.5;
+    color: #dbe4f0;
+    font-size: 0.9rem;
+}
+
+.idea-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.idea-card-actions {
+    margin-top: 0.85rem;
+}
+
+.idea-card-actions .btn-secondary {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .actions,
+    .ai-actions,
+    .panel-heading,
+    .ai-results,
+    .ai-grid {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .compact-btn {
+        width: 100%;
+    }
+
+    .idea-card-header,
+    .idea-meta {
+        flex-direction: column;
+    }
 }

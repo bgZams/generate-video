@@ -3,3 +3,5 @@ output/
 temp/
 uploads/
 *.mp3
+.env
+.env.local
