@@ -1,0 +1,28 @@
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# .htaccess for Node.js Application on cPanel Shared Hosting
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1. Pastikan semua request yang masuk ke folder ini
+    # diteruskan ke aplikasi Node.js (Passenger/Proxy)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ server.js/$1 [L]
+</IfModule>
+
+# Opsional: Jika hosting Anda belum otomatis mengatur port
+# Anda mungkin perlu menghubungi support untuk memastikan port Node.js terbuka
+# untuk domain ini.
+
+# Security: Jangan biarkan orang melihat file .env atau folder data melalui browser
+<Files .env>
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Directory data>
+    Order allow,deny
+    Deny from all
+</Directory>

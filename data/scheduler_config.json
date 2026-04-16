@@ -1,0 +1,9 @@
+{
+  "enabled": true,
+  "schedule": "0 5,11,16,20 * * *",
+  "topic": "Hijrah Karena Lelah",
+  "voice": "google-id",
+  "privacyStatus": "public",
+  "visualEffect": "none",
+  "vignette": false
+}
