@@ -1,8 +1,8 @@
 {
   "enabled": true,
   "schedule": "0 5,11,16,20 * * *",
-  "topic": "Hijrah Karena Lelah",
-  "voice": "google-id",
+  "topic": "motivasi hijrah islami",
+  "voice": "edge-id-gadis",
   "privacyStatus": "public",
   "visualEffect": "none",
   "vignette": false

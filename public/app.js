@@ -779,6 +779,76 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnToggleScheduler = document.getElementById('btn-toggle-scheduler');
     const btnConnectYoutube = document.getElementById('btn-connect-youtube');
     const btnDisconnectYoutube = document.getElementById('btn-disconnect-youtube');
+
+    function renderPlatformStatus({ isAuth, profile, badgeId, connectId, disconnectId, infoId, nameId, connectLabel, reconnectLabel, profilePrefix }) {
+        const badge = document.getElementById(badgeId);
+        const connectBtn = document.getElementById(connectId);
+        const disconnectBtn = document.getElementById(disconnectId);
+        const info = document.getElementById(infoId);
+        const nameEl = document.getElementById(nameId);
+        if (!badge) return;
+        if (isAuth) {
+            badge.textContent = 'CONNECTED';
+            badge.className = 'badge badge-on';
+            if (connectBtn) connectBtn.textContent = reconnectLabel;
+            if (disconnectBtn) disconnectBtn.style.display = 'inline-block';
+            if (info && nameEl && profile) {
+                nameEl.textContent = `${profilePrefix}: ${profile.title}`;
+                info.style.display = 'flex';
+            }
+        } else {
+            badge.textContent = 'DISCONNECTED';
+            badge.className = 'badge badge-off';
+            if (connectBtn) connectBtn.textContent = connectLabel;
+            if (disconnectBtn) disconnectBtn.style.display = 'none';
+            if (info) info.style.display = 'none';
+        }
+    }
+
+    async function openOAuthWindow(urlEndpoint, statusKey, label) {
+        try {
+            const response = await fetch(urlEndpoint);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Server error while getting auth URL');
+            }
+            const data = await response.json();
+            if (!data.success || !data.url) {
+                alert(`Gagal mendapatkan URL autentikasi ${label}.`);
+                return;
+            }
+            window.open(data.url, '_blank');
+            alert(`Halaman autentikasi ${label} terbuka di tab baru. Izinkan aplikasi lalu kembali ke sini.`);
+            const pollInterval = setInterval(async () => {
+                const statusRes = await fetch('/api/scheduler/status');
+                const statusData = await statusRes.json();
+                if (statusData[statusKey]) {
+                    updateSchedulerUI();
+                    clearInterval(pollInterval);
+                }
+            }, 5000);
+        } catch (error) {
+            console.error(`Failed to get ${label} auth URL:`, error);
+            alert(`Gagal menghubungkan ke ${label}: ${error.message}`);
+        }
+    }
+
+    async function disconnectPlatform(endpoint, label) {
+        if (!confirm(`Putuskan koneksi ${label}?`)) return;
+        try {
+            const response = await fetch(endpoint, { method: 'POST' });
+            const data = await response.json();
+            if (data.success) {
+                await updateSchedulerUI();
+                alert(`Koneksi ${label} diputuskan.`);
+            } else {
+                alert(`Gagal memutuskan ${label}: ` + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error(`Failed to disconnect ${label}:`, error);
+            alert('Error saat menghubungi server: ' + error.message);
+        }
+    }
     const btnSaveScheduler = document.getElementById('btn-save-scheduler');
     const btnRunNow = document.getElementById('btn-run-now');
     const schedulerTopicInput = document.getElementById('scheduler-topic');
@@ -812,7 +882,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         youtubeStatusBadge.className = 'badge badge-on';
                         if (btnConnectYoutube) btnConnectYoutube.textContent = 'Re-connect YouTube';
                         if (btnDisconnectYoutube) btnDisconnectYoutube.style.display = 'inline-block';
-                        
+
                         // Show channel info
                         const channelInfo = document.getElementById('youtube-channel-info');
                         const channelName = document.getElementById('youtube-channel-name');
@@ -825,11 +895,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         youtubeStatusBadge.className = 'badge badge-off';
                         if (btnConnectYoutube) btnConnectYoutube.textContent = 'Connect YouTube';
                         if (btnDisconnectYoutube) btnDisconnectYoutube.style.display = 'none';
-                        
+
                         const channelInfo = document.getElementById('youtube-channel-info');
                         if (channelInfo) channelInfo.style.display = 'none';
                     }
                 }
+
+                renderPlatformStatus({
+                    isAuth: data.isFacebookAuthenticated,
+                    profile: data.facebookProfile,
+                    badgeId: 'facebook-status-badge',
+                    connectId: 'btn-connect-facebook',
+                    disconnectId: 'btn-disconnect-facebook',
+                    infoId: 'facebook-page-info',
+                    nameId: 'facebook-page-name',
+                    connectLabel: 'Connect Facebook',
+                    reconnectLabel: 'Re-connect Facebook',
+                    profilePrefix: 'Page'
+                });
+                renderPlatformStatus({
+                    isAuth: data.isTiktokAuthenticated,
+                    profile: data.tiktokProfile,
+                    badgeId: 'tiktok-status-badge',
+                    connectId: 'btn-connect-tiktok',
+                    disconnectId: 'btn-disconnect-tiktok',
+                    infoId: 'tiktok-user-info',
+                    nameId: 'tiktok-user-name',
+                    connectLabel: 'Connect TikTok',
+                    reconnectLabel: 'Re-connect TikTok',
+                    profilePrefix: 'User'
+                });
 
                 // Update Form
                 if (schedulerTopicInput) schedulerTopicInput.value = config.topic || '';
@@ -931,7 +1026,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         publishAt: publishAt,
                         provider: aiCfg.provider,
                         aiApiKey: aiCfg.apiKey,
-                        model: aiCfg.model
+                        model: aiCfg.model,
+                        platforms: {
+                            youtube:  document.getElementById('target-youtube')?.checked !== false,
+                            facebook: document.getElementById('target-facebook')?.checked !== false,
+                            tiktok:   document.getElementById('target-tiktok')?.checked !== false
+                        }
                     })
                 });
                 const data = await response.json();
@@ -999,6 +1099,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    const btnConnectFacebook = document.getElementById('btn-connect-facebook');
+    const btnDisconnectFacebook = document.getElementById('btn-disconnect-facebook');
+    const btnConnectTiktok = document.getElementById('btn-connect-tiktok');
+    const btnDisconnectTiktok = document.getElementById('btn-disconnect-tiktok');
+
+    if (btnConnectFacebook) btnConnectFacebook.addEventListener('click', () =>
+        openOAuthWindow('/api/facebook/auth-url', 'isFacebookAuthenticated', 'Facebook'));
+    if (btnDisconnectFacebook) btnDisconnectFacebook.addEventListener('click', () =>
+        disconnectPlatform('/api/facebook/disconnect', 'Facebook'));
+    if (btnConnectTiktok) btnConnectTiktok.addEventListener('click', () =>
+        openOAuthWindow('/api/tiktok/auth-url', 'isTiktokAuthenticated', 'TikTok'));
+    if (btnDisconnectTiktok) btnDisconnectTiktok.addEventListener('click', () =>
+        disconnectPlatform('/api/tiktok/disconnect', 'TikTok'));
 
     // ===== LOG CONSOLE LOGIC =====
     const logConsole = document.getElementById('log-console');

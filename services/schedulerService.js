@@ -24,9 +24,9 @@ class SchedulerService {
                 // Default: Daily at 9:00 AM
                 this.config = {
                     enabled: false,
-                    schedule: '0 5,11,16,20 * * *', 
+                    schedule: '0 5,11,16,20 * * *',
                     topic: 'Fakta Menarik Dunia',
-                    voice: 'google-id',
+                    voice: 'edge-id-gadis',
                     privacyStatus: 'public',
                     visualEffect: 'none',
                     vignette: false

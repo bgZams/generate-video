@@ -38,6 +38,8 @@ const {
 } = require('./services/bgmService'); // Note: path might be ./services/bgmService if file is in services/
 
 const youtubeService = require('./services/youtubeService');
+const facebookService = require('./services/facebookService');
+const tiktokService = require('./services/tiktokService');
 const automationService = require('./services/automationService');
 const schedulerService = require('./services/schedulerService');
 const { generateThumbnail } = require('./services/thumbnailService');
@@ -582,17 +584,24 @@ app.post('/api/thumbnail/generate', async (req, res) => {
 app.get('/api/scheduler/status', async (req, res) => {
     try {
         const isAuth = youtubeService.isAuthenticated();
-        let youtubeProfile = null;
-        
-        if (isAuth) {
-            youtubeProfile = await youtubeService.getChannelProfile();
-        }
+        const isFbAuth = facebookService.isAuthenticated();
+        const isTtAuth = tiktokService.isAuthenticated();
+
+        const [youtubeProfile, facebookProfile, tiktokProfile] = await Promise.all([
+            isAuth ? youtubeService.getChannelProfile().catch(() => null) : null,
+            isFbAuth ? facebookService.getPageProfile().catch(() => null) : null,
+            isTtAuth ? tiktokService.getUserProfile().catch(() => null) : null
+        ]);
 
         res.json({
             success: true,
             status: schedulerService.getStatus(),
             isYouTubeAuthenticated: isAuth,
-            youtubeProfile: youtubeProfile
+            youtubeProfile,
+            isFacebookAuthenticated: isFbAuth,
+            facebookProfile,
+            isTiktokAuthenticated: isTtAuth,
+            tiktokProfile
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -666,6 +675,66 @@ app.get('/api/youtube/callback', async (req, res) => {
         res.send('<h1>Authentication Successful!</h1><p>You can close this tab and return to the application.</p>');
     } catch (error) {
         res.status(500).send(`Authentication Failed: ${error.message}`);
+    }
+});
+
+// ===== FACEBOOK AUTH ENDPOINTS =====
+app.get('/api/facebook/auth-url', (req, res) => {
+    try {
+        const url = facebookService.getAuthUrl();
+        res.json({ success: true, url });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/facebook/disconnect', async (req, res) => {
+    try {
+        const success = await facebookService.revokeTokens();
+        res.json({ success });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/facebook/callback', async (req, res) => {
+    try {
+        const { code } = req.query;
+        if (!code) return res.status(400).send('Code is required');
+        await facebookService.saveTokens(code);
+        res.send('<h1>Facebook Connected!</h1><p>You can close this tab.</p>');
+    } catch (error) {
+        res.status(500).send(`Facebook Auth Failed: ${error.response?.data?.error?.message || error.message}`);
+    }
+});
+
+// ===== TIKTOK AUTH ENDPOINTS =====
+app.get('/api/tiktok/auth-url', (req, res) => {
+    try {
+        const url = tiktokService.getAuthUrl();
+        res.json({ success: true, url });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/tiktok/disconnect', async (req, res) => {
+    try {
+        const success = await tiktokService.revokeTokens();
+        res.json({ success });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/tiktok/callback', async (req, res) => {
+    try {
+        const { code } = req.query;
+        if (!code) return res.status(400).send('Code is required');
+        await tiktokService.saveTokens(code);
+        res.send('<h1>TikTok Connected!</h1><p>You can close this tab.</p>');
+    } catch (error) {
+        res.status(500).send(`TikTok Auth Failed: ${error.response?.data?.error_description || error.message}`);
     }
 });
 

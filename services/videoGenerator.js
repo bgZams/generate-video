@@ -3,10 +3,10 @@ const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
 const ffprobeInstaller = require('@ffprobe-installer/ffprobe');
-const googleTTS = require('google-tts-api');
 const axios = require('axios');
 const { execFileSync } = require('child_process');
 const captionService = require('./captionService');
+const edgeTts = require('./edgeTtsService');
 
 // Prefer a binary that has modern filters (xfade, etc.). Order:
 //   1. System FFmpeg (usually a full build)
@@ -125,36 +125,15 @@ const autoSearchImage = async (text, destPath, width, height) => {
 
 // ===== TTS =====
 
-const generateTTS = async (text, destPath, tempDir, slideIndex) => {
-    const safeText = text.replace(/\?/g, '.').replace(/\n/g, '. ');
-    const maxLen = 150;
-    const words = safeText.split(' ');
-    let chunks = [];
-    let cur = '';
-    words.forEach(w => {
-        if ((cur + " " + w).length > maxLen) { chunks.push(cur.trim()); cur = w; }
-        else { cur += cur ? " " + w : w; }
-    });
-    if (cur.trim()) chunks.push(cur.trim());
-    console.log(`  TTS: ${chunks.length} chunk(s)`);
-
-    const chunkPaths = [];
-    for (let i = 0; i < chunks.length; i++) {
-        const base64Audio = await googleTTS.getAudioBase64(chunks[i], { lang: 'id', slow: false, host: 'https://translate.google.com' });
-        const chunkPath = path.join(tempDir, `tts_${slideIndex}_${i}.mp3`);
-        fs.writeFileSync(chunkPath, Buffer.from(base64Audio, 'base64'));
-        chunkPaths.push(chunkPath);
-    }
-
-    if (chunkPaths.length === 1) {
-        fs.copyFileSync(chunkPaths[0], destPath);
-    } else {
-        const inputs = chunkPaths.join('|');
-        runFFmpeg(['-y', '-i', `concat:${inputs}`, '-acodec', 'copy', destPath]);
-    }
-
+// Internal TTS — digunakan hanya jika pipeline TIDAK menerima audioPath
+// pre-rendered. Menggunakan Edge TTS (natural, gratis).
+const generateTTS = async (text, destPath, tempDir, slideIndex, voiceOption) => {
+    const safeText = text.replace(/\n/g, '. ');
+    const useVoice = voiceOption || edgeTts.DEFAULT_EDGE_VOICE;
+    const buf = await edgeTts.generateEdgeAudio(safeText, useVoice, 1.0);
+    fs.writeFileSync(destPath, buf);
     const finalDur = await getDuration(destPath);
-    console.log(`  TTS final: ${finalDur}s`);
+    console.log(`  TTS (edge:${useVoice}): ${finalDur.toFixed(2)}s`);
     return finalDur;
 };
 
@@ -184,6 +163,11 @@ const getKenBurnsPreset = (presetIndex, width, height, totalFrames) => {
           filter: `zoompan=z='1.2-0.2*on/${tf}':x='(iw-iw/zoom)*(0.7-0.5*on/${tf})':y='(ih-ih/zoom)*(0.7-0.5*on/${tf})':d=${tf}:s=${w}x${h}:fps=30` }
     ];
 
+    // Kalau presetIndex null/undefined -> random (anti-pola "selalu urut").
+    // Video monetization-friendly: tiap render punya motion yg tidak predictable.
+    if (presetIndex == null || presetIndex < 0) {
+        return presets[Math.floor(Math.random() * presets.length)];
+    }
     return presets[presetIndex % presets.length];
 };
 
@@ -370,7 +354,7 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
 
             console.log(`\n  Slide ${i + 1} TTS:`);
             const spokenText = slide.text || "Slide ini tidak memiliki teks.";
-            const dur = await generateTTS(spokenText, audioPath, tempDir, i);
+            const dur = await generateTTS(spokenText, audioPath, tempDir, i, config.ttsVoice);
             slideAudioPaths.push(audioPath);
             slideAudioDurations.push(dur);
         }
@@ -419,8 +403,11 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
             const groupAudioDur = await getDuration(groupAudioPath);
             console.log(`  Group audio: ${groupAudioDur.toFixed(1)}s`);
 
-            // Build video filter: scale → zoompan → timed drawtext per slide
-            const preset = getKenBurnsPreset(g, width, height, totalFrames);
+            // Build video filter: scale → zoompan → timed drawtext per slide.
+            // Motion dipilih RANDOM per group (bukan modulo urutan grup) supaya
+            // video beruntun tidak punya pola motion yang sama — mengurangi
+            // risiko flag "templated content" saat review monetisasi.
+            const preset = getKenBurnsPreset(-1, width, height, totalFrames);
             console.log(`  Motion: ${preset.name}`);
 
             // === Submagic-style word-chunk captions ===

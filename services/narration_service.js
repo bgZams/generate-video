@@ -176,11 +176,48 @@ function saveUsedTitle(title, payload = {}) {
     return formatHistoryEntry(updatedEntry);
 }
 
+// --- Archetype variation (anti "templated content" flag) -------------------
+// Dipilih RANDOM tiap request supaya struktur narasi tidak identik antar
+// video: hook, gaya isi, dan CTA rotasi — mengurangi risiko kena flag
+// "mass-produced content" saat review monetisasi YouTube.
+const HOOK_ARCHETYPES = [
+    'Mulai dengan PERTANYAAN memancing yg menusuk rasa penasaran penonton.',
+    'Mulai dengan ANGKA/STATISTIK mengejutkan yg relevan dengan tema.',
+    'Mulai dengan pernyataan KONTROVERSIAL tapi jujur ("Banyak orang salah kira...").',
+    'Mulai dengan kalimat "Tahukah kamu..." lalu teaser singkat.',
+    'Mulai dengan KUTIPAN tokoh/hadits/ayat yg kuat dan relevan.',
+    'Mulai dengan SKENARIO relatable ("Pernah nggak kamu merasa...").'
+];
+
+const CONTENT_STYLES = [
+    'Narasikan seperti STORYTELLING kronologis — bangun klimaks.',
+    'Narasikan seperti LIST BERNOMOR insight (tanpa menyebut angka list).',
+    'Narasikan seperti PERBANDINGAN "dulu vs sekarang" atau "mitos vs fakta".',
+    'Narasikan seperti STUDI KASUS tokoh/peristiwa nyata.',
+    'Narasikan seperti PELAJARAN bertahap dari masalah ke solusi.'
+];
+
+const CTA_ARCHETYPES = [
+    '"Follow untuk konten inspiratif setiap hari."',
+    '"Tulis pendapatmu di komentar — mana yg paling relate?"',
+    '"Share ke teman yg perlu dengar ini."',
+    '"Simpan video ini biar kamu gak lupa pelajarannya."',
+    '"Komen angka favoritmu, dan follow untuk bagian selanjutnya."',
+    '"Double tap kalau kamu setuju, dan follow untuk kisah berikutnya."'
+];
+
+function pickOne(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
 function buildPrompt({ topic, slideCount, count, usedTitles }) {
     const safeTopic = topic?.trim() || 'Buat tema video pendek yang menarik untuk konten Indonesia.';
     const exclusions = usedTitles.length
         ? `Jangan ulangi atau mirip dengan judul berikut: ${usedTitles.join(' | ')}.`
         : 'Belum ada judul terpakai sebelumnya.';
+
+    // Pilih archetype secara acak per-generate -> tiap video beda ritme/gaya.
+    const hookStyle    = pickOne(HOOK_ARCHETYPES);
+    const contentStyle = pickOne(CONTENT_STYLES);
+    const ctaStyle     = pickOne(CTA_ARCHETYPES);
 
     return [
         `Tema utama: ${safeTopic}`,
@@ -188,15 +225,16 @@ function buildPrompt({ topic, slideCount, count, usedTitles }) {
         '',
         'STRUKTUR NARASI WAJIB (professional Shorts format):',
         `- Total ${slideCount} potongan narasi, SATU potongan untuk SATU slide.`,
-        `- Slide 1 = HOOK (3 detik pertama). WAJIB dimulai dengan pertanyaan memancing, angka mengejutkan, atau "Tahukah kamu...". Maksimal 1 kalimat singkat, padat, membuat penasaran.`,
-        `- Slide 2 sampai ${slideCount - 1} = ISI / VALUE. Setiap slide berisi satu fakta, insight, atau langkah cerita. Bangun penasaran progresif (makin ke belakang makin klimaks).`,
-        `- Slide ${slideCount} = CTA. Ajakan natural seperti "Follow untuk konten serupa setiap hari!" atau "Komen pendapatmu di bawah." Maksimal 1 kalimat.`,
+        `- Slide 1 = HOOK (3 detik pertama). ${hookStyle} Maksimal 1 kalimat singkat yg bikin penasaran.`,
+        `- Slide 2 sampai ${slideCount - 1} = ISI / VALUE. ${contentStyle} Bangun penasaran progresif (makin ke belakang makin klimaks).`,
+        `- Slide ${slideCount} = CTA. Tulis ajakan natural bergaya: ${ctaStyle} Maksimal 1 kalimat.`,
         '',
         'GAYA BAHASA:',
         '- Padat, natural, conversational — seperti orang Indonesia bicara di TikTok/Reels.',
         '- Setiap potongan maksimal 2 kalimat pendek (< 15 kata per kalimat).',
         '- Gunakan kata hook: "ternyata", "faktanya", "jangan kaget", "diam-diam", "inilah alasannya".',
         '- Hindari bahasa kaku, jargon berlebih, atau kalimat panjang berbelit.',
+        '- WAJIB narasi ORISINAL (bukan copy-paste dari Wikipedia/artikel). Tambahkan sudut pandang/hikmah yg tidak umum.',
         '',
         `Judul harus clickbait positif (bikin penasaran tapi jujur), 30-70 karakter, dalam bahasa Indonesia.`,
         `Summary singkat 1 kalimat yang merangkum isi video.`,

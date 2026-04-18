@@ -7,18 +7,24 @@
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
+const edgeTts = require('./edgeTtsService');
 
 const OPENAI_TTS_URL = 'https://api.openai.com/v1/audio/speech';
 
-const googleTTS = require('google-tts-api');
-
 // Voice options dengan deskripsi
+// Default: Edge TTS (gratis, natural) — aman untuk monetisasi.
 const VOICE_OPTIONS = {
-    'google-id': {
-        name: '🇮🇩 Native Indonesian (Google)',
-        description: 'Suara asli Indonesia (logat pas, agak robotik)',
+    'edge-id-gadis': {
+        name: '🇮🇩 Gadis (Edge, wanita ceria) — direkomendasikan',
+        description: 'Suara wanita Indonesia natural via Microsoft Edge TTS (gratis)',
         type: 'female',
-        provider: 'google'
+        provider: 'edge'
+    },
+    'edge-id-ardi': {
+        name: '🇮🇩 Ardi (Edge, pria hangat) — direkomendasikan',
+        description: 'Suara pria Indonesia natural via Microsoft Edge TTS (gratis)',
+        type: 'male',
+        provider: 'edge'
     },
     shimmer: {
         name: '🎀 Shimmer (Sangat Lembut - Wanita)',
@@ -52,8 +58,8 @@ const VOICE_OPTIONS = {
     }
 };
 
-// Default voice (paling natural logatnya)
-const DEFAULT_VOICE = 'google-id';
+// Default voice: Edge TTS (natural, gratis, aman monetisasi)
+const DEFAULT_VOICE = 'edge-id-gadis';
 
 // Speed options
 const SPEED_OPTIONS = {
@@ -80,13 +86,16 @@ async function generateNarrationAudio(narrationText, voiceOption = DEFAULT_VOICE
         throw new Error('Narasi text tidak boleh kosong');
     }
 
-    if (!apiKey || !apiKey.trim()) {
-        throw new Error('OpenAI API key diperlukan');
-    }
-
     // Validate voice option
     if (!VOICE_OPTIONS[voiceOption]) {
         throw new Error(`Suara "${voiceOption}" tidak valid. Pilihan: ${Object.keys(VOICE_OPTIONS).join(', ')}`);
+    }
+
+    // API key hanya wajib untuk provider OpenAI.
+    // Edge TTS gratis tanpa key, Google TTS juga free.
+    const needsKey = VOICE_OPTIONS[voiceOption].provider === 'openai';
+    if (needsKey && (!apiKey || !apiKey.trim())) {
+        throw new Error('OpenAI API key diperlukan untuk voice ini');
     }
 
     // Validate speed
@@ -103,33 +112,11 @@ async function generateNarrationAudio(narrationText, voiceOption = DEFAULT_VOICE
     console.log(`  Speed: ${finalSpeed}x`);
 
     try {
-        if (voiceConfig.provider === 'google') {
-            // Google TTS logic (max 200 chars per chunk)
-            if (trimmedText.length <= 200) {
-                const url = googleTTS.getAudioUrl(trimmedText, {
-                    lang: 'id',
-                    slow: finalSpeed < 1.0,
-                    host: 'https://translate.google.com',
-                });
-                const response = await axios.get(url, { responseType: 'arraybuffer' });
-                console.log(`  ✅ Google Audio generated (${response.data.length} bytes)`);
-                return response.data;
-            } else {
-                // Split long text
-                const chunks = googleTTS.getAllAudioUrls(trimmedText, {
-                    lang: 'id',
-                    slow: finalSpeed < 1.0,
-                    host: 'https://translate.google.com',
-                });
-                const buffers = [];
-                for (const chunk of chunks) {
-                    const res = await axios.get(chunk.url, { responseType: 'arraybuffer' });
-                    buffers.push(Buffer.from(res.data));
-                }
-                const combined = Buffer.concat(buffers);
-                console.log(`  ✅ Google Combined Audio generated (${combined.length} bytes)`);
-                return combined;
-            }
+        if (voiceConfig.provider === 'edge') {
+            // Edge TTS (Microsoft) — FREE, natural Indonesian voices
+            const buf = await edgeTts.generateEdgeAudio(trimmedText, voiceOption, finalSpeed);
+            console.log(`  ✅ Edge Audio generated (${buf.length} bytes)`);
+            return buf;
         } else {
             // OpenAI original logic
             const response = await axios.post(

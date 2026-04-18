@@ -91,13 +91,31 @@ function computeFontSize(lines, canvasW, canvasH) {
     return Math.max(36, fontSize);
 }
 
+// Palette rotasi — supaya batch thumbnail tidak tampak seragam
+// (YouTube mendeteksi visual-similarity pada kanal auto-content).
+const THUMBNAIL_PALETTES = [
+    { accent: 'yellow',         base: 'white' },
+    { accent: 'cyan',           base: 'white' },
+    { accent: '#FF5252',        base: 'white' },   // merah terang
+    { accent: '#FFB300',        base: 'white' },   // amber
+    { accent: '#7CFC00',        base: 'white' },   // hijau lime
+    { accent: 'white',          base: '#FFEB3B' }, // inversi
+    { accent: '#FF80AB',        base: 'white' }    // pink
+];
+
+function pickPalette(seed) {
+    if (seed == null) return THUMBNAIL_PALETTES[Math.floor(Math.random() * THUMBNAIL_PALETTES.length)];
+    return THUMBNAIL_PALETTES[Math.abs(seed) % THUMBNAIL_PALETTES.length];
+}
+
 /**
  * Build a drawtext chain that stacks the title lines vertically.
- * Each line is drawn with a heavy black stroke + bright yellow "slash"
+ * Each line is drawn with a heavy black stroke + bright accent
  * highlight behind every other line for a click-bait look.
  */
 function buildTitleFilters(titleLines, opts) {
-    const { fontPath, canvasW, canvasH } = opts;
+    const { fontPath, canvasW, canvasH, palette } = opts;
+    const { accent, base } = palette || pickPalette();
     const fontSize = computeFontSize(titleLines, canvasW, canvasH);
     const lineGap = Math.round(fontSize * 0.15);
     const lineH   = fontSize + lineGap;
@@ -109,8 +127,8 @@ function buildTitleFilters(titleLines, opts) {
     titleLines.forEach((line, i) => {
         const safe = sanitize(line.toUpperCase());
         const y = startY + i * lineH;
-        // Alternate accent: odd lines in yellow for pop
-        const color = (i % 2 === 1) ? 'yellow' : 'white';
+        // Alternate accent untuk "pop"
+        const color = (i % 2 === 1) ? accent : base;
         filters.push([
             `drawtext=fontfile='${fontPath}'`,
             `text='${safe}'`,
@@ -144,7 +162,10 @@ async function generateThumbnail(params) {
         outputPath,
         title,
         orientation = 'landscape',
-        grabTime = 0.25
+        // Bila tidak diisi: random dalam window 0.4–2.5s sehingga thumbnail
+        // di-sampling dari frame yg berbeda tiap video (bukan selalu 0.25s).
+        grabTime = +(0.4 + Math.random() * 2.1).toFixed(2),
+        palette = null  // {accent, base} — kalau null, dipilih acak
     } = params;
 
     if (!videoPath || !fs.existsSync(videoPath)) {
@@ -176,10 +197,12 @@ async function generateThumbnail(params) {
         `drawbox=x=0:y=0:w=iw:h=ih:color=black@0.25:t=fill`
     ];
 
+    const chosenPalette = palette || pickPalette();
     const titleFilters = buildTitleFilters(lines, {
         fontPath: fontForFilter,
         canvasW,
-        canvasH
+        canvasH,
+        palette: chosenPalette
     });
 
     const vf = [...baseFilters, ...titleFilters].join(',');
@@ -198,11 +221,13 @@ async function generateThumbnail(params) {
         throw new Error('Thumbnail file was not produced.');
     }
 
-    console.log(`🖼️  Thumbnail generated: ${outputPath}`);
+    console.log(`🖼️  Thumbnail generated: ${outputPath} (palette: ${chosenPalette.accent}/${chosenPalette.base}, grab: ${grabTime}s)`);
     return outputPath;
 }
 
 module.exports = {
     generateThumbnail,
-    wrapTitle
+    wrapTitle,
+    THUMBNAIL_PALETTES,
+    pickPalette
 };

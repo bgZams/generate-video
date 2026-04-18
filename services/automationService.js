@@ -7,7 +7,50 @@ const { generateNarrationAudio, saveAudioFile } = require('./ttsService');
 const { generateYouTubeMetadata } = require('./metadataService');
 const { getMusicByMood, analyzeMoodFromText } = require('./bgmService');
 const youtubeService = require('./youtubeService');
+const facebookService = require('./facebookService');
+const tiktokService = require('./tiktokService');
 const { generateThumbnail } = require('./thumbnailService');
+const edgeTts = require('./edgeTtsService');
+
+// --- Randomization helpers (anti "templated content" flag) ------------------
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// Variasi caption accent — rotasi gaya warna sub-judul burn-in
+const CAPTION_ACCENTS = ['yellow', 'cyan', 'lime', '#FF5252', '#FFB300', '#7CFC00'];
+
+// Variasi ukuran chunk caption (Submagic pakai 2; kita rotasi 2-3 utk variasi ritme)
+const CAPTION_CHUNK_SIZES = [2, 2, 3, 3, 2]; // distribusi: lebih sering 2-3
+
+/**
+ * Bagi N slide ke grup acak — tiap grup share 1 gambar (hemat + natural).
+ * Minimal 2 grup, maksimal 5 grup; ukuran tiap grup 1-5 slide.
+ * Mengembalikan array `refMap` panjang N, berisi index slide awal grup
+ * (atau null jika slide itu sendiri awal grup / tidak di-ref).
+ */
+function buildRandomGroups(slideCount) {
+    const minGroups = 2;
+    const maxGroups = Math.min(5, Math.max(minGroups, Math.ceil(slideCount / 2)));
+    const groupCount = minGroups + Math.floor(Math.random() * (maxGroups - minGroups + 1));
+
+    // Distribusi ukuran grup: shuffle + pastikan total == slideCount
+    const sizes = new Array(groupCount).fill(1);
+    let remaining = slideCount - groupCount;
+    while (remaining > 0) {
+        const idx = Math.floor(Math.random() * groupCount);
+        if (sizes[idx] < 5) { sizes[idx]++; remaining--; }
+    }
+
+    const refMap = new Array(slideCount).fill(null);
+    let cursor = 0;
+    for (const size of sizes) {
+        const head = cursor;
+        for (let k = 1; k < size && head + k < slideCount; k++) {
+            refMap[head + k] = head; // slide berikutnya re-use gambar slide awal grup
+        }
+        cursor += size;
+    }
+    return refMap;
+}
 
 /**
  * Automation Service - Manages the end-to-end workflow from idea to upload
@@ -59,7 +102,9 @@ class AutomationService {
             const {
                 topic = 'Kata-kata Bijak dan Motivasi Kehidupan',
                 slideCount = 15,
-                voice = 'google-id', // Native Indonesian accent (Google)
+                // Default: rotasi otomatis antara 2 suara Edge TTS (pria/wanita)
+                // supaya batch video tidak terdengar dari 1 voice yg sama.
+                voice = edgeTts.pickRandomEdgeVoice(),
                 privacyStatus = 'public',
                 keywords = ['motivasi', 'katabijak', 'inspirasi', 'shorts', 'sukses'],
                 publishAt = null, // ISO string for scheduling
@@ -94,12 +139,15 @@ class AutomationService {
 
             console.log(`   ✅ Topic: ${title} (11 Slides)`);
 
-            // 2. Generate Audio (TTS) per segment for high-quality consistent voice
-            console.log('🎙️ Step 2: Generating high-quality narration audio per segment...');
+            // 2. Generate Audio (TTS) per segment — Edge TTS (gratis, natural)
+            // Speed juga dirandom sedikit (0.95–1.05) supaya ritme narasi
+            // tidak identik antar video.
+            const speedJitter = +(0.95 + Math.random() * 0.1).toFixed(2);
+            console.log(`🎙️ Step 2: Generating high-quality narration audio (voice=${voice}, speed=${speedJitter})...`);
             const segmentAudioPaths = [];
             for (let i = 0; i < Math.min(segments.length, 11); i++) {
                 try {
-                    const audioBuffer = await generateNarrationAudio(segments[i], voice, 1.0, this.apiKey);
+                    const audioBuffer = await generateNarrationAudio(segments[i], voice, speedJitter, this.apiKey);
                     const audioFilename = `auto_audio_${jobId}_${i}`;
                     const audioPath = await saveAudioFile(audioBuffer, audioFilename);
                     segmentAudioPaths.push(audioPath);
@@ -136,49 +184,40 @@ class AutomationService {
             });
             console.log('   ✅ Metadata generated.');
 
-            // 5. Prepare Video Config with Grouping Logic (Enforce 11 slides)
-            console.log('🎬 Step 5: Rendering video with image grouping (11 slides)...');
+            // 5. Prepare Video Config with RANDOMIZED grouping (anti templated-flag)
+            console.log('🎬 Step 5: Rendering video with randomized image grouping...');
+            const usableSegments = segments.slice(0, 11);
+            const refMap = buildRandomGroups(usableSegments.length);
+
+            // Randomize caption styling per video
+            const captionAccent = options.captionAccent || pickRandom(CAPTION_ACCENTS);
+            const captionChunkSize = options.captionChunkSize || pickRandom(CAPTION_CHUNK_SIZES);
+
             const videoConfig = {
                 storyTitle: title,
                 resolution: '9:16',
                 localBgmPath: localBgmPath,
                 visualEffect: visualEffect,
                 vignette: vignette,
+                ttsVoice: voice, // diteruskan ke internal fallback generateTTS
                 // Pro pipeline feature toggles — all ON by default for Shorts
                 captions: options.captions !== false,
-                captionChunkSize: options.captionChunkSize || 2,
-                captionAccent: options.captionAccent || 'yellow',
+                captionChunkSize,
+                captionAccent,
                 transitions: options.transitions !== false,
                 progressBar: options.progressBar !== false,
-                slides: segments.slice(0, 11).map((text, idx) => {
-                    let imageSource = 'auto';
-                    let refSlide = null;
-
-                    // Grouping Logic:
-                    // Group 1: Slide 1-3 (idx 0-2) -> Slide 2 & 3 ref Slide 1
-                    if (idx >= 1 && idx <= 2) {
-                        imageSource = 'ref';
-                        refSlide = 0;
-                    }
-                    // Group 2: Slide 4-8 (idx 3-7) -> Slide 5-8 ref Slide 4
-                    else if (idx >= 4 && idx <= 7) {
-                        imageSource = 'ref';
-                        refSlide = 3;
-                    }
-                    // Group 3: Slide 9-11 (idx 8-10) -> Slide 10-11 ref Slide 9
-                    else if (idx >= 9 && idx <= 10) {
-                        imageSource = 'ref';
-                        refSlide = 8;
-                    }
-
+                slides: usableSegments.map((text, idx) => {
+                    const refSlide = refMap[idx];
+                    const imageSource = refSlide != null ? 'ref' : 'auto';
                     return {
                         text,
                         imageSource,
                         refSlide,
-                        audioPath: segmentAudioPaths[idx] // FIXED: Pass the generated high-quality audio
+                        audioPath: segmentAudioPaths[idx]
                     };
                 })
             };
+            console.log(`   🎨 Variations -> groups=${new Set(refMap.map((v,i)=>v??i)).size}, chunk=${captionChunkSize}, accent=${captionAccent}`);
 
             const outputPath = path.join(__dirname, '../output', `auto_video_${jobId}.mp4`);
             await generateVideo(videoConfig, outputPath, jobId);
@@ -193,8 +232,9 @@ class AutomationService {
                     videoPath: outputPath,
                     outputPath: thumbnailPath,
                     title: metadata.titles?.variations?.[0] || title,
-                    orientation: 'portrait',
-                    grabTime: 0.25
+                    orientation: 'portrait'
+                    // grabTime & palette dibiarkan default = RANDOM
+                    // supaya tiap thumbnail tampil beda (warna & frame-start).
                 });
             } catch (thumbErr) {
                 console.warn(`   ⚠️ Thumbnail generation failed: ${thumbErr.message}`);
@@ -207,14 +247,20 @@ class AutomationService {
                 narrationSegments: segments
             });
 
-            // 7. Upload to YouTube (if authenticated)
+            const finalTitle = metadata.titles?.variations?.[0] || title;
+            const platformTargets = options.platforms || {};
+            const wantYouTube = platformTargets.youtube !== false;
+            const wantFacebook = platformTargets.facebook !== false;
+            const wantTiktok   = platformTargets.tiktok   !== false;
+
+            // 7a. Upload to YouTube (if authenticated + enabled)
             let youtubeResult = null;
-            if (youtubeService.isAuthenticated()) {
-                console.log('🚀 Step 6: Uploading to YouTube...');
+            if (wantYouTube && youtubeService.isAuthenticated()) {
+                console.log('🚀 Step 6a: Uploading to YouTube...');
                 try {
                     youtubeResult = await youtubeService.uploadVideo({
                         path: outputPath,
-                        title: metadata.titles?.variations?.[0] || title,
+                        title: finalTitle,
                         description: metadata.description,
                         tags: metadata.tags,
                         privacyStatus: privacyStatus,
@@ -224,14 +270,53 @@ class AutomationService {
                     console.log('   ✅ YouTube Upload Complete!');
                 } catch (uploadError) {
                     console.error('   ❌ YouTube Upload Failed:', uploadError.message);
-                    youtubeResult = { 
-                        success: false, 
+                    youtubeResult = {
+                        success: false,
                         error: uploadError.message,
                         note: 'YouTube upload limit might be reached or connection issue.'
                     };
                 }
-            } else {
-                console.log('⚠️ Step 6: Skipping YouTube upload (Not authenticated).');
+            } else if (wantYouTube) {
+                console.log('⚠️ Step 6a: Skipping YouTube upload (Not authenticated).');
+            }
+
+            // 7b. Upload to Facebook Page (Reels)
+            let facebookResult = null;
+            if (wantFacebook && facebookService.isAuthenticated()) {
+                console.log('🚀 Step 6b: Uploading to Facebook Reels...');
+                try {
+                    facebookResult = await facebookService.uploadVideo({
+                        path: outputPath,
+                        title: finalTitle,
+                        description: metadata.description,
+                        asReel: true
+                    });
+                    console.log('   ✅ Facebook Upload Complete!');
+                } catch (err) {
+                    console.error('   ❌ Facebook Upload Failed:', err.response?.data || err.message);
+                    facebookResult = { success: false, error: err.message };
+                }
+            } else if (wantFacebook) {
+                console.log('⚠️ Step 6b: Skipping Facebook upload (Not authenticated).');
+            }
+
+            // 7c. Upload to TikTok (inbox/draft by default)
+            let tiktokResult = null;
+            if (wantTiktok && tiktokService.isAuthenticated()) {
+                console.log('🚀 Step 6c: Uploading to TikTok...');
+                try {
+                    tiktokResult = await tiktokService.uploadVideo({
+                        path: outputPath,
+                        title: finalTitle,
+                        description: metadata.description
+                    });
+                    console.log('   ✅ TikTok Upload Complete!');
+                } catch (err) {
+                    console.error('   ❌ TikTok Upload Failed:', err.response?.data || err.message);
+                    tiktokResult = { success: false, error: err.message };
+                }
+            } else if (wantTiktok) {
+                console.log('⚠️ Step 6c: Skipping TikTok upload (Not authenticated).');
             }
 
             console.log(`✨ Workflow Complete (JobID: ${jobId})\n`);
@@ -243,6 +328,8 @@ class AutomationService {
                 videoPath: outputPath,
                 thumbnailPath,
                 youtube: youtubeResult,
+                facebook: facebookResult,
+                tiktok: tiktokResult,
                 metadata
             };
 

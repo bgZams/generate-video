@@ -73,7 +73,8 @@
                         <div class="form-group">
                             <label for="narrator_voice">Suara Narator (TTS)</label>
                             <select id="narrator_voice" name="narrator_voice">
-                                <option value="google-id" selected>🇮🇩 Native Indonesian (Free - Recommended)</option>
+                                <option value="edge-id-gadis" selected>🇮🇩 Gadis (Edge TTS - Wanita, Natural - Free)</option>
+                                <option value="edge-id-ardi">🇮🇩 Ardi (Edge TTS - Pria, Hangat - Free)</option>
                                 <option value="nova">✨ Nova (Premium - OpenAI Voice)</option>
                                 <option value="shimmer">🎀 Shimmer (Premium - OpenAI Voice)</option>
                                 <option value="alloy">🎤 Alloy (Premium - OpenAI Voice)</option>
@@ -407,6 +408,39 @@
                         <div id="youtube-channel-info" style="margin-top: 10px; font-size: 0.85rem; color: #a5b4fc; display: none; align-items: center; gap: 8px;">
                             📺 <span id="youtube-channel-name"></span>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Facebook Page Connection</label>
+                        <div class="status-badge-group">
+                            <span id="facebook-status-badge" class="badge badge-off">DISCONNECTED</span>
+                            <button type="button" id="btn-connect-facebook" class="btn-secondary compact-btn">Connect Facebook</button>
+                            <button type="button" id="btn-disconnect-facebook" class="btn-danger compact-btn" style="display: none;">Disconnect</button>
+                        </div>
+                        <div id="facebook-page-info" style="margin-top: 10px; font-size: 0.85rem; color: #a5b4fc; display: none; align-items: center; gap: 8px;">
+                            📘 <span id="facebook-page-name"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>TikTok Connection</label>
+                        <div class="status-badge-group">
+                            <span id="tiktok-status-badge" class="badge badge-off">DISCONNECTED</span>
+                            <button type="button" id="btn-connect-tiktok" class="btn-secondary compact-btn">Connect TikTok</button>
+                            <button type="button" id="btn-disconnect-tiktok" class="btn-danger compact-btn" style="display: none;">Disconnect</button>
+                        </div>
+                        <div id="tiktok-user-info" style="margin-top: 10px; font-size: 0.85rem; color: #a5b4fc; display: none; align-items: center; gap: 8px;">
+                            🎵 <span id="tiktok-user-name"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="scheduler-settings" style="margin-top: 10px;">
+                    <div class="form-group">
+                        <label>Platform Upload Targets</label>
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                            <label class="checkbox-label"><input type="checkbox" id="target-youtube" checked><span>YouTube</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="target-facebook" checked><span>Facebook Reels</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="target-tiktok" checked><span>TikTok</span></label>
+                        </div>
+                        <small>Platform yang tidak terkoneksi akan dilewati otomatis.</small>
                     </div>
                 </div>
 
