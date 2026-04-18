@@ -54,3 +54,4 @@ These Terms may be updated from time to time. The most recent version will be pu
 ## 10. Contact
 
 For questions about these Terms, please open an issue in the App's public repository.
+ 

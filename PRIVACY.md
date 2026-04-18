@@ -9,7 +9,7 @@ This application ("the App") is a self-hosted tool installed and operated by the
 The App is **single-tenant**: it is used only by the Operator, who is also the owner of the connected social media accounts. The App's authors do not operate any central server that receives, stores, or processes user data.
 
 ## 2. Data We Do NOT Collect
-
+ 
 - The App does not transmit any data to its authors.
 - The App does not use analytics, telemetry, or tracking of any kind.
 - The App does not collect data from users of the Operator's social media accounts (viewers, followers, commenters, etc.).
