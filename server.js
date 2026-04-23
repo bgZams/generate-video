@@ -378,6 +378,16 @@ app.post('/api/generate', upload.any(), async (req, res) => {
         if (config.transitions === undefined) config.transitions = true;
         if (config.progressBar === undefined) config.progressBar = true;
 
+        // Channel-name watermark: auto-fetch from the connected YouTube channel
+        // so every render carries the creator's handle. This protects against
+        // re-uploads and helps the video pass YPP "original content" review.
+        if (!config.channelName && youtubeService.isAuthenticated()) {
+            try {
+                const profile = await youtubeService.getChannelProfile();
+                if (profile && profile.title) config.channelName = profile.title;
+            } catch (_) { /* non-fatal */ }
+        }
+
         // Generate Video
         const jobId = uuidv4();
         const outputPath = path.join('./output', `video_${jobId}.mp4`);
@@ -729,9 +739,9 @@ app.post('/api/tiktok/disconnect', async (req, res) => {
 
 app.get('/api/tiktok/callback', async (req, res) => {
     try {
-        const { code } = req.query;
+        const { code, state } = req.query;
         if (!code) return res.status(400).send('Code is required');
-        await tiktokService.saveTokens(code);
+        await tiktokService.saveTokens(code, state);
         res.send('<h1>TikTok Connected!</h1><p>You can close this tab.</p>');
     } catch (error) {
         res.status(500).send(`TikTok Auth Failed: ${error.response?.data?.error_description || error.message}`);

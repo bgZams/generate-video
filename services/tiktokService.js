@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const axios = require('axios');
 
 const TIKTOK_API = 'https://open.tiktokapis.com';
@@ -28,6 +29,7 @@ class TikTokService {
         this.credentialsPath = path.join(__dirname, '../data/tiktok_credentials.json');
         this.credentials = null;
         this.tokens = null;
+        this.pkceStore = new Map(); // state -> { verifier, createdAt }
         this.initialize();
     }
 
@@ -49,7 +51,18 @@ class TikTokService {
         }
     }
 
+    _reloadCredentials() {
+        if (fs.existsSync(this.credentialsPath)) {
+            try {
+                this.credentials = JSON.parse(fs.readFileSync(this.credentialsPath, 'utf8'));
+            } catch (e) {
+                console.error('❌ TikTok credentials parse error:', e.message);
+            }
+        }
+    }
+
     _requireCredentials() {
+        this._reloadCredentials();
         if (!this.credentials || !this.credentials.client_key || !this.credentials.client_secret) {
             throw new Error('TikTok credentials not configured. Isi data/tiktok_credentials.json');
         }
@@ -59,25 +72,58 @@ class TikTokService {
         return (this.credentials && this.credentials.mode) || 'inbox';
     }
 
+    _generatePkce() {
+        const verifier = crypto.randomBytes(48).toString('hex'); // 96 chars, within 43-128 range
+        const challenge = crypto.createHash('sha256').update(verifier).digest('hex');
+        return { verifier, challenge };
+    }
+
+    _pruneOldPkce() {
+        const cutoff = Date.now() - 10 * 60 * 1000; // 10 minutes
+        for (const [key, val] of this.pkceStore) {
+            if (val.createdAt < cutoff) this.pkceStore.delete(key);
+        }
+    }
+
     getAuthUrl() {
         this._requireCredentials();
+        this._pruneOldPkce();
         const redirectUri = this.credentials.redirect_uri || 'http://localhost:3000/api/tiktok/callback';
         // Inbox mode: cukup video.upload. Direct publish butuh video.publish juga.
         const scopes = this._getMode() === 'direct'
             ? 'user.info.basic,video.upload,video.publish'
             : 'user.info.basic,video.upload';
+        const state = 'tt_' + Date.now();
+        const { verifier, challenge } = this._generatePkce();
+        this.pkceStore.set(state, { verifier, createdAt: Date.now() });
         const url = new URL(AUTH_BASE);
         url.searchParams.set('client_key', this.credentials.client_key);
         url.searchParams.set('response_type', 'code');
         url.searchParams.set('scope', scopes);
         url.searchParams.set('redirect_uri', redirectUri);
-        url.searchParams.set('state', 'tt_' + Date.now());
+        url.searchParams.set('state', state);
+        url.searchParams.set('code_challenge', challenge);
+        url.searchParams.set('code_challenge_method', 'S256');
         return url.toString();
     }
 
-    async saveTokens(code) {
+    async saveTokens(code, state) {
         this._requireCredentials();
         const redirectUri = this.credentials.redirect_uri || 'http://localhost:3000/api/tiktok/callback';
+
+        let verifier = null;
+        if (state && this.pkceStore.has(state)) {
+            verifier = this.pkceStore.get(state).verifier;
+            this.pkceStore.delete(state);
+        } else if (this.pkceStore.size > 0) {
+            // Fallback: use the most recent verifier if state missing
+            const entries = [...this.pkceStore.entries()].sort((a, b) => b[1].createdAt - a[1].createdAt);
+            verifier = entries[0][1].verifier;
+            this.pkceStore.delete(entries[0][0]);
+        }
+        if (!verifier) {
+            throw new Error('TikTok PKCE verifier missing — mulai ulang dari tombol Connect.');
+        }
 
         const res = await axios.post(
             `${TIKTOK_API}/v2/oauth/token/`,
@@ -86,7 +132,8 @@ class TikTokService {
                 client_secret: this.credentials.client_secret,
                 code,
                 grant_type: 'authorization_code',
-                redirect_uri: redirectUri
+                redirect_uri: redirectUri,
+                code_verifier: verifier
             }).toString(),
             { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
         );

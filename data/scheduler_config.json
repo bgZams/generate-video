@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "schedule": "0 5,11,16,20 * * *",
-  "topic": "motivasi hijrah islami",
+  "topic": "percayalah, tanpa pacaran kamu akan di temukan jodoh yang lebih baik",
   "voice": "edge-id-gadis",
   "privacyStatus": "public",
   "visualEffect": "none",

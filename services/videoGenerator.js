@@ -6,6 +6,7 @@ const ffprobeInstaller = require('@ffprobe-installer/ffprobe');
 const axios = require('axios');
 const { execFileSync } = require('child_process');
 const captionService = require('./captionService');
+const { sanitizeDrawtext } = require('./captionService');
 const edgeTts = require('./edgeTtsService');
 
 // Prefer a binary that has modern filters (xfade, etc.). Order:
@@ -223,6 +224,41 @@ const buildProgressBarFilter = (totalDur, videoWidth, videoHeight, color = 'yell
         `drawbox=x=0:y=ih-${barH}:w='iw*t/${totalDur.toFixed(3)}':h=${barH}:color=${color}:t=fill`
     ].join(',');
 };
+
+/**
+ * Channel-name watermark to deter re-uploads and reinforce original-creator
+ * signals for YouTube Partner Program review. Placed near the top-right so it
+ * survives typical crop-and-reupload attacks (which usually trim bottom UI /
+ * progress bars). Semi-transparent with stroke + shadow to stay legible across
+ * any background while remaining unobtrusive for viewers.
+ */
+const buildBrandingFilter = (channelName, fontPath, videoWidth, videoHeight) => {
+    if (!channelName || !fontPath) return null;
+    const handle = String(channelName).trim().replace(/^@+/, '');
+    if (!handle) return null;
+    const safe = sanitizeDrawtext(`@${handle}`);
+    const fontSize = Math.max(22, Math.round(videoHeight * 0.022));
+    const yPos = Math.round(videoHeight * 0.035);
+    const xMargin = Math.round(videoWidth * 0.03);
+    return [
+        `drawtext=fontfile='${fontPath}'`,
+        `text='${safe}'`,
+        `fontcolor=white@0.9`,
+        `fontsize=${fontSize}`,
+        `borderw=${Math.max(3, Math.round(fontSize * 0.1))}`,
+        `bordercolor=black@0.95`,
+        `shadowcolor=black@0.7`,
+        `shadowx=2`,
+        `shadowy=2`,
+        `box=1`,
+        `boxcolor=black@0.4`,
+        `boxborderw=${Math.round(fontSize * 0.35)}`,
+        `x=w-text_w-${xMargin}`,
+        `y=${yPos}`
+    ].join(':');
+};
+
+const composeOverlayChain = (parts) => parts.filter(Boolean).join(',');
 
 /**
  * Per-group fade-in from black for the very first group (avoid abrupt start).
@@ -486,6 +522,8 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
             console.log('  ⚠️ xfade filter not available in this FFmpeg build — using hard cuts.');
         }
         const progressBarEnabled = config.progressBar !== false; // default ON
+        const brandingFilter = buildBrandingFilter(config.channelName, fontForFilter, parseInt(width), parseInt(height));
+        if (brandingFilter) console.log(`  🔖 Channel watermark: @${String(config.channelName).replace(/^@+/, '')}`);
         const XFADE_DUR = 0.35;
 
         // Pre-compute per-group durations (xfade offsets need absolute timeline)
@@ -499,12 +537,15 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
         const concatedPath = path.join(tempDir, 'concated.mp4');
 
         if (groupVideos.length === 1) {
-            // Single group — just overlay progress bar if enabled, else pass through
-            if (progressBarEnabled) {
-                const pb = buildProgressBarFilter(groupDurations[0], parseInt(width), parseInt(height));
+            // Single group — overlay progress bar and/or branding if enabled
+            const pb = progressBarEnabled
+                ? buildProgressBarFilter(groupDurations[0], parseInt(width), parseInt(height))
+                : null;
+            const overlay = composeOverlayChain([pb, brandingFilter]);
+            if (overlay) {
                 runFFmpeg([
                     '-y', '-i', groupVideos[0],
-                    '-vf', pb,
+                    '-vf', overlay,
                     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30',
                     '-c:a', 'aac', '-b:a', '192k',
                     concatedPath
@@ -532,11 +573,14 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
                 prevATag = atag;
             }
 
-            // Final chain: add progress bar on top of the xfaded video
+            // Final chain: add progress bar + channel watermark on top of the xfaded video
             let finalVTag = prevVTag;
-            if (progressBarEnabled) {
-                const pb = buildProgressBarFilter(totalDurEstimated, parseInt(width), parseInt(height));
-                filterParts.push(`[${prevVTag}]${pb}[vout]`);
+            const pb = progressBarEnabled
+                ? buildProgressBarFilter(totalDurEstimated, parseInt(width), parseInt(height))
+                : null;
+            const overlayXf = composeOverlayChain([pb, brandingFilter]);
+            if (overlayXf) {
+                filterParts.push(`[${prevVTag}]${overlayXf}[vout]`);
                 finalVTag = 'vout';
             }
 
@@ -554,14 +598,17 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
             // Fast path: plain concat (no transitions)
             const concatListPath = path.join(tempDir, 'concat.txt');
             fs.writeFileSync(concatListPath, groupVideos.map(v => `file '${v.replace(/\\/g, '/')}'`).join('\n'));
-            if (progressBarEnabled) {
+            if (progressBarEnabled || brandingFilter) {
                 const rawConcat = path.join(tempDir, 'concat_raw.mp4');
                 runFFmpeg(['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', rawConcat]);
                 const rawDur = await getDuration(rawConcat);
-                const pb = buildProgressBarFilter(rawDur, parseInt(width), parseInt(height));
+                const pb = progressBarEnabled
+                    ? buildProgressBarFilter(rawDur, parseInt(width), parseInt(height))
+                    : null;
+                const overlay = composeOverlayChain([pb, brandingFilter]);
                 runFFmpeg([
                     '-y', '-i', rawConcat,
-                    '-vf', pb,
+                    '-vf', overlay,
                     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-pix_fmt', 'yuv420p', '-r', '30',
                     '-c:a', 'aac', '-b:a', '192k',
                     concatedPath

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -c services/videoGenerator.js)",
+      "Bash(node -c services/automationService.js)",
+      "Bash(node -c server.js)"
+    ]
+  }
+}

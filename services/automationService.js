@@ -193,6 +193,16 @@ class AutomationService {
             const captionAccent = options.captionAccent || pickRandom(CAPTION_ACCENTS);
             const captionChunkSize = options.captionChunkSize || pickRandom(CAPTION_CHUNK_SIZES);
 
+            // Fetch channel name from the connected YouTube account so the
+            // watermark marks every video as originating from the creator.
+            let channelName = options.channelName || null;
+            if (!channelName && youtubeService.isAuthenticated()) {
+                try {
+                    const profile = await youtubeService.getChannelProfile();
+                    if (profile && profile.title) channelName = profile.title;
+                } catch (_) { /* non-fatal */ }
+            }
+
             const videoConfig = {
                 storyTitle: title,
                 resolution: '9:16',
@@ -200,6 +210,7 @@ class AutomationService {
                 visualEffect: visualEffect,
                 vignette: vignette,
                 ttsVoice: voice, // diteruskan ke internal fallback generateTTS
+                channelName,
                 // Pro pipeline feature toggles — all ON by default for Shorts
                 captions: options.captions !== false,
                 captionChunkSize,
