@@ -1,9 +1,12 @@
 {
   "permissions": {
     "allow": [
+      "Bash(git stash *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git checkout *)",
+      "Bash(git reset *)",
       "Bash(node -c services/videoGenerator.js)",
-      "Bash(node -c services/automationService.js)",
-      "Bash(node -c server.js)"
+      "Bash(node -c services/automationService.js)"
     ]
   }
 }

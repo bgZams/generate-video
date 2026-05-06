@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "schedule": "0 5,11,16,20 * * *",
-  "topic": "percayalah, tanpa pacaran kamu akan di temukan jodoh yang lebih baik",
+  "topic": "Saat Kamu Lelah Menjadi Kuat, Ingat: Ada Doa Ibumu yang Tidak Pernah Putus Untukmu",
   "voice": "edge-id-gadis",
   "privacyStatus": "public",
   "visualEffect": "none",

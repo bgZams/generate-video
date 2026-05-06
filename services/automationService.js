@@ -114,8 +114,9 @@ class AutomationService {
                 vignette = false
             } = options;
 
-            // Ensure we have exactly 11 segments
-            const slideCountForIdea = 11;
+            // Target 9 segments so the finished Short stays comfortably under
+            // YouTube's 60s limit (≈5s narasi × 9 + padding ≈ 55-58s).
+            const slideCountForIdea = 9;
             const ai = this._resolveAIConfig(options);
             if (!ai.apiKey) {
                 throw new Error(`API key ${ai.provider.toUpperCase()} tidak tersedia. Masukkan token di UI atau .env.`);
@@ -145,7 +146,7 @@ class AutomationService {
             const speedJitter = +(0.95 + Math.random() * 0.1).toFixed(2);
             console.log(`🎙️ Step 2: Generating high-quality narration audio (voice=${voice}, speed=${speedJitter})...`);
             const segmentAudioPaths = [];
-            for (let i = 0; i < Math.min(segments.length, 11); i++) {
+            for (let i = 0; i < Math.min(segments.length, slideCountForIdea); i++) {
                 try {
                     const audioBuffer = await generateNarrationAudio(segments[i], voice, speedJitter, this.apiKey);
                     const audioFilename = `auto_audio_${jobId}_${i}`;
@@ -186,7 +187,7 @@ class AutomationService {
 
             // 5. Prepare Video Config with RANDOMIZED grouping (anti templated-flag)
             console.log('🎬 Step 5: Rendering video with randomized image grouping...');
-            const usableSegments = segments.slice(0, 11);
+            const usableSegments = segments.slice(0, slideCountForIdea);
             const refMap = buildRandomGroups(usableSegments.length);
 
             // Randomize caption styling per video
@@ -211,6 +212,9 @@ class AutomationService {
                 vignette: vignette,
                 ttsVoice: voice, // diteruskan ke internal fallback generateTTS
                 channelName,
+                // Hard cap supaya video tetap valid Shorts (< 60s). Kalau narasi
+                // AI kepanjangan, generator akan trim ke nilai ini di akhir.
+                maxDurationSec: 58,
                 // Pro pipeline feature toggles — all ON by default for Shorts
                 captions: options.captions !== false,
                 captionChunkSize,

@@ -407,7 +407,7 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
             const indices = group.indices;
 
             // Calculate time segments
-            const PADDING = 0.5;
+            const PADDING = 0.3;
             let offset = 0;
             const segments = indices.map(idx => {
                 const audioDur = slideAudioDurations[idx];
@@ -695,7 +695,26 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
             fs.copyFileSync(concatedPath, finalOutputPath);
         }
 
-        const finalDur = await getDuration(finalOutputPath);
+        let finalDur = await getDuration(finalOutputPath);
+
+        // Safety cap: hard-trim if caller set maxDurationSec (e.g. Shorts < 60s).
+        // Only triggers when we're actually over, so normal-length videos skip
+        // the re-encode and keep their full duration.
+        const maxDur = Number(config.maxDurationSec) || 0;
+        if (maxDur > 0 && finalDur > maxDur) {
+            console.log(`  ✂️ Trimming ${finalDur.toFixed(1)}s → ${maxDur}s to satisfy maxDurationSec`);
+            const trimmedPath = path.join(tempDir, 'final_trimmed.mp4');
+            runFFmpeg([
+                '-y', '-i', finalOutputPath,
+                '-t', String(maxDur),
+                '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-pix_fmt', 'yuv420p',
+                '-c:a', 'aac', '-b:a', '192k',
+                trimmedPath
+            ]);
+            fs.copyFileSync(trimmedPath, finalOutputPath);
+            finalDur = await getDuration(finalOutputPath);
+        }
+
         console.log(`\n=== Done! ${finalDur.toFixed(1)}s video saved ===`);
 
     } catch (err) {
