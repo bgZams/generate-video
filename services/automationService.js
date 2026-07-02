@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { generateVideo } = require('./videoGenerator');
-const { generateIdeas, generateIdeasFor, DEFAULT_MODEL, saveUsedTitle } = require('./narration_service');
+const { generateIdeas, generateIdeasFor, DEFAULT_MODEL, VIDEO_MODE_PRESETS, saveUsedTitle } = require('./narration_service');
 const { generateNarrationAudio, saveAudioFile } = require('./ttsService');
 const { generateYouTubeMetadata } = require('./metadataService');
 const { getMusicByMood, analyzeMoodFromText } = require('./bgmService');
@@ -99,9 +99,13 @@ class AutomationService {
         this.isProcessing = true;
 
         try {
+            // Resolve videoMode and its preset config
+            const videoMode = options.videoMode || 'short';
+            const modePreset = VIDEO_MODE_PRESETS[videoMode] || VIDEO_MODE_PRESETS.short;
+            console.log(`🎬 Video Mode: ${videoMode} (${modePreset.label})`);
+
             const {
                 topic = 'Kata-kata Bijak dan Motivasi Kehidupan',
-                slideCount = 15,
                 // Default: rotasi otomatis antara 2 suara Edge TTS (pria/wanita)
                 // supaya batch video tidak terdengar dari 1 voice yg sama.
                 voice = edgeTts.pickRandomEdgeVoice(),
@@ -114,26 +118,39 @@ class AutomationService {
                 vignette = false
             } = options;
 
-            // Target 9 segments so the finished Short stays comfortably under
-            // YouTube's 60s limit (≈5s narasi × 9 + padding ≈ 55-58s).
-            const slideCountForIdea = 9;
+            // Use preset values unless explicitly overridden
+            const slideCountForIdea = options.slideCount || modePreset.slideCount;
+            const maxDurationSec = options.maxDurationSec || modePreset.maxDurationSec;
+            const resolution = options.resolution || modePreset.resolutionDefault;
+
+            console.log(`   📐 Resolution: ${resolution} | Slides: ${slideCountForIdea} | MaxDur: ${maxDurationSec}s`);
+
+
             const ai = this._resolveAIConfig(options);
             if (!ai.apiKey) {
                 throw new Error(`API key ${ai.provider.toUpperCase()} tidak tersedia. Masukkan token di UI atau .env.`);
             }
-            console.log(`🤖 Using AI provider: ${ai.provider} (model: ${ai.model})`);
-            const ideas = await generateIdeasFor(ai.provider, ai.apiKey, {
-                topic,
-                slideCount: slideCountForIdea,
-                count: 1,
-                model: ai.model
-            });
 
-            if (!ideas || !ideas.ideas || ideas.ideas.length === 0) {
-                throw new Error('Failed to generate narration ideas');
+            let idea;
+            if (options.preDefinedIdea && options.preDefinedIdea.narrationSegments) {
+                console.log('🤖 Using pre-defined idea from Bulk UI');
+                idea = options.preDefinedIdea;
+            } else {
+                console.log(`🤖 Using AI provider: ${ai.provider} (model: ${ai.model})`);
+                const ideas = await generateIdeasFor(ai.provider, ai.apiKey, {
+                    topic,
+                    slideCount: slideCountForIdea,
+                    count: 1,
+                    model: ai.model,
+                    videoMode
+                });
+
+                if (!ideas || !ideas.ideas || ideas.ideas.length === 0) {
+                    throw new Error('Failed to generate narration ideas');
+                }
+                idea = ideas.ideas[0];
             }
 
-            const idea = ideas.ideas[0];
             const title = idea.title;
             const segments = idea.narrationSegments || [];
             const fullText = segments.join(' ');
@@ -172,17 +189,28 @@ class AutomationService {
             }
 
             // 4. Generate YouTube Metadata (uses the SAME provider as ideas)
-            console.log(`📊 Step 4: Generating SEO metadata via ${ai.provider}...`);
-            const metadata = await generateYouTubeMetadata({
-                title,
-                topic,
-                summary: title,
-                narrationPoints: segments,
-                keywords,
-                apiKey: ai.apiKey,
-                provider: ai.provider,
-                model: ai.model
-            });
+            let metadata;
+            if (options.metadataFallback) {
+                console.log('📊 Step 4: Using manual metadata fallback...');
+                metadata = {
+                    titles: { variations: [options.metadataFallback.title || title] },
+                    description: options.metadataFallback.description || title,
+                    tags: options.metadataFallback.tags || keywords,
+                    status: 'manual'
+                };
+            } else {
+                console.log(`📊 Step 4: Generating SEO metadata via ${ai.provider}...`);
+                metadata = await generateYouTubeMetadata({
+                    title,
+                    topic,
+                    summary: title,
+                    narrationPoints: segments,
+                    keywords,
+                    apiKey: ai.apiKey,
+                    provider: ai.provider,
+                    model: ai.model
+                });
+            }
             console.log('   ✅ Metadata generated.');
 
             // 5. Prepare Video Config with RANDOMIZED grouping (anti templated-flag)
@@ -206,15 +234,14 @@ class AutomationService {
 
             const videoConfig = {
                 storyTitle: title,
-                resolution: '9:16',
+                resolution: resolution,
                 localBgmPath: localBgmPath,
                 visualEffect: visualEffect,
                 vignette: vignette,
                 ttsVoice: voice, // diteruskan ke internal fallback generateTTS
                 channelName,
-                // Hard cap supaya video tetap valid Shorts (< 60s). Kalau narasi
-                // AI kepanjangan, generator akan trim ke nilai ini di akhir.
-                maxDurationSec: 58,
+                // Hard cap supaya video tetap valid. Untuk Shorts < 60s.
+                maxDurationSec: maxDurationSec,
                 // Pro pipeline feature toggles — all ON by default for Shorts
                 captions: options.captions !== false,
                 captionChunkSize,
@@ -224,8 +251,17 @@ class AutomationService {
                 slides: usableSegments.map((text, idx) => {
                     const refSlide = refMap[idx];
                     const imageSource = refSlide != null ? 'ref' : 'auto';
+
+                    // NEW: Support separate text for Captions/Subtitles vs TTS
+                    // If options.preDefinedIdea.captionSegments exists, use it for 'text' (captions)
+                    let captionText = text;
+                    if (options.preDefinedIdea && options.preDefinedIdea.captionSegments && options.preDefinedIdea.captionSegments[idx]) {
+                        captionText = options.preDefinedIdea.captionSegments[idx];
+                    }
+
                     return {
-                        text,
+                        text: captionText, // Original text (e.g. "Allah") for captions
+                        audioText: text,   // Modified text (e.g. "Ongloh") for audio/TTS
                         imageSource,
                         refSlide,
                         audioPath: segmentAudioPaths[idx]
@@ -247,7 +283,7 @@ class AutomationService {
                     videoPath: outputPath,
                     outputPath: thumbnailPath,
                     title: metadata.titles?.variations?.[0] || title,
-                    orientation: 'portrait'
+                    orientation: resolution === '16:9' ? 'landscape' : 'portrait'
                     // grabTime & palette dibiarkan default = RANDOM
                     // supaya tiap thumbnail tampil beda (warna & frame-start).
                 });

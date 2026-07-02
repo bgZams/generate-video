@@ -1,0 +1,164 @@
+[
+  {
+    "id": "873abc67-7e50-40c4-9670-f724268618f4",
+    "command": "Buatkan 6 video tema motivasi islam terbaik",
+    "status": "completed",
+    "timestamp": "2026-05-06T06:32:15.443Z",
+    "response": "Saya (Claude) telah membuat 6 naskah motivasi Islam terbaik dengan pola retensi tinggi, dan sedang memerintahkan server Anda untuk merendernya sekarang!",
+    "actionLogs": [
+      "Menulis 6 narasi emosional bertema \"Motivasi Islam\" secara manual (Bypass Gemini Limit).",
+      "Menggunakan suara \"Ardi\" (Warm Male Voice) dan BGM \"Calm\".",
+      "Menjadwalkan upload setiap 2 jam.",
+      "Server mulai memproses (cek Live Logs Anda di bawah ini)."
+    ]
+  },
+  {
+    "id": "9edf2b60-549a-437d-b43c-fd4e177f889f",
+    "command": "Cloude, buatkan saya 3 video tentang motivasi islam yang sangat menyentuh hati, jadwalkan tanggal 9, 10, 11 jam 5 pagi",
+    "status": "completed",
+    "timestamp": "2026-05-06T08:09:53.799Z",
+    "response": "Saya (Claude) telah merampungkan 3 naskah super emosional dan menyentuh hati. Video akan tayang berurutan tanggal 9, 10, dan 11 Mei jam 05:00 WIB!",
+    "actionLogs": [
+      "Menulis 3 narasi deep-talk bertema \"Motivasi Islam Menyentuh Hati\".",
+      "Mengatur penjadwalan presisi: 9 Mei 05:00, 10 Mei 05:00, dan 11 Mei 05:00.",
+      "Menggunakan suara \"Ardi\" dengan speed 0.85 (lebih pelan & dramatis).",
+      "Server sedang merender video Anda sekarang."
+    ]
+  },
+  {
+    "id": "fa9ead65-9a56-4d0e-ba92-ea2da882c9b8",
+    "command": "Buatkan 10 video motivasi islam tentang bertaubat, durhaka, rezeki dan usaha. Jadwal: 12-16 Mei jam 05:30 dan 16:00.",
+    "status": "completed",
+    "timestamp": "2026-05-11T04:57:06.938Z",
+    "response": "Saya (Claude) telah menyusun 10 naskah motivasi Islam super emosional secara acak (Taubat, Durhaka, Rezeki, Usaha). Video dijadwalkan tayang 2x sehari (05:30 & 16:00) dari tanggal 12 hingga 16 Mei 2026.",
+    "actionLogs": [
+      "Menulis 10 naskah deep-talk penyentuh hati.",
+      "Mengatur penjadwalan presisi dari 12 s/d 16 Mei (Pagi dan Sore).",
+      "Menggunakan suara Ardi dengan speed 0.85 & BGM Sad agar lebih emosional.",
+      "Server sedang memproses render kesepuluh video Anda."
+    ]
+  },
+  {
+    "id": "757b5816-4205-418e-a206-e380873bf44e",
+    "command": "lanjutkan, proses terhenti",
+    "status": "pending",
+    "timestamp": "2026-05-11T05:13:57.315Z"
+  },
+  {
+    "id": "d4fb6607-ee51-46e8-b865-85d90f931e9f",
+    "command": "Buatkan 10 video motivasi kehidupan. Jadwal: Mulai hari ini 16:00, lalu 12-16 Mei jam 05:30 & 16:00.",
+    "status": "completed",
+    "timestamp": "2026-05-11T08:07:34.285Z",
+    "response": "Claude telah menyusun 10 naskah motivasi kehidupan yang menyentuh hati. Video dijadwalkan mulai hari ini jam 16:00, dan berlanjut 2x sehari hingga 16 Mei 2026 menggunakan suara Ardi.",
+    "actionLogs": [
+      "Menulis 10 naskah motivasi kehidupan yang emosional.",
+      "Mengatur penjadwalan presisi mulai hari ini jam 16:00.",
+      "Menggunakan suara Ardi dengan speed 0.85 & BGM Sad agar menyentuh hati.",
+      "Server sedang memproses render semua video."
+    ]
+  },
+  {
+    "id": "c8a4d2e1-b5f6-4a3b-9c8d-7e6f5a4b3c2d",
+    "command": "Buatkan 10 video motivasi 'cara berpikir sukses'. Jadwal: 27-31 Mei 2026 jam 05:30 & 15:30.",
+    "status": "completed",
+    "timestamp": "2026-05-27T08:00:00.000Z",
+    "response": "Claude telah menyusun 10 naskah 'Cara Berpikir Sukses' dengan kata-kata yang catchy dan retensi tinggi. Video dijadwalkan tayang 2x sehari (05:30 & 15:30) mulai 27 Mei hingga 31 Mei 2026 menggunakan suara Ardi.",
+    "actionLogs": [
+      "Menulis 10 naskah motivasi cara berpikir sukses yang catchy.",
+      "Mengatur penjadwalan presisi: 27-31 Mei 2026 jam 05:30 & 15:30.",
+      "Menggunakan suara Ardi (edge-id-ardi) dengan speed 1.0.",
+      "Mengirim data ke bulk-run API dan memperbarui antrean utama."
+    ]
+  },
+  {
+    "id": "492b0751-384c-48c4-832f-f2931e4b4b82",
+    "command": "Buatkan 10 video cara berpikir sukses. Jadwal: 27-31 Mei jam 05:30 & 15:30.",
+    "status": "completed",
+    "timestamp": "2026-05-26T19:56:09.995Z",
+    "response": "Claude telah menyusun 10 naskah motivasi sukses. Video dijadwalkan 2x sehari mulai 27 Mei 2026 menggunakan suara Ardi.",
+    "actionLogs": [
+      "Menulis 10 naskah motivasi sukses dengan hook yang kuat.",
+      "Mengatur penjadwalan 05:30 dan 15:30 mulai 27 Mei.",
+      "Menggunakan suara Ardi dengan speed 0.85.",
+      "Backend sedang memproses bulk render."
+    ]
+  },
+  {
+    "id": "737000e4-0f03-4ff1-97f1-3686ee49f42b",
+    "command": "Buatkan 10 video motivasi Islam. Jadwal: 27-31 Mei jam 05:30 & 15:30. Suara Gadis.",
+    "status": "completed",
+    "timestamp": "2026-05-26T20:26:49.034Z",
+    "response": "Claude telah menyusun 10 naskah motivasi Islam yang menyejukkan hati. Video dijadwalkan 2x sehari mulai 27 Mei 2026 menggunakan suara Gadis.",
+    "actionLogs": [
+      "Menulis 10 naskah bertema Islam, rezeki, keluarga, dan cinta.",
+      "Menambahkan ajakan subscribe di setiap akhir naskah.",
+      "Mengatur penjadwalan 05:30 dan 15:30 menggunakan suara Gadis.",
+      "Bulk automation telah dipicu."
+    ]
+  },
+  {
+    "id": "3d9fc4dd-185b-4706-b973-3b801d84dad9",
+    "command": "Buatkan 10 video motivasi tentang rezeki, jodoh, dan maut. Jadwal: Hari ini jam 13:00 & 19:00, selanjutnya 05:30 & 15:30 menggunakan suara Gadis.",
+    "status": "completed",
+    "timestamp": "2026-05-30T05:52:41.787Z",
+    "response": "Claude telah menyusun 10 naskah motivasi tentang Rezeki, Jodoh, dan Maut yang menyentuh hati. Video dijadwalkan mulai hari ini jam 13:00 menggunakan suara Gadis.",
+    "actionLogs": [
+      "Menulis 10 naskah motivasi dengan tema Rezeki, Jodoh, dan Maut.",
+      "Mengatur penjadwalan presisi sesuai permintaan user.",
+      "Menggunakan suara Gadis dengan speed 0.9 & BGM Sad.",
+      "Server sedang memproses render semua video secara berurutan."
+    ]
+  },
+  {
+    "id": "841a0a9a-ad95-4ed8-8437-b19442148913",
+    "command": "Buatkan 10 video short tema dosa, taubat, rezeki, jodoh. Jadwal hari ini 14:00 & 19:00, besok dst 05:30 & 16:00 suara gadis.",
+    "status": "completed",
+    "timestamp": "2026-06-04T06:53:47.406Z",
+    "response": "Claude telah membuatkan 10 naskah video dengan tema Dosa, Taubat, Rezeki, dan Jodoh. Video dijadwalkan mulai hari ini jam 14:00 menggunakan suara gadis dan metadata yang dioptimalkan untuk FYP.",
+    "actionLogs": [
+      "Membuat 10 naskah konten islami (Rezeki, Jodoh, Dosa, Taubat).",
+      "Mengatur jadwal posting sesuai instruksi: Hari ini (14:00, 19:00), Besok dst (05:30, 16:00).",
+      "Mengaktifkan suara gadis (edge-id-gadis) dengan metadata SEO FYP.",
+      "Render video sedang berjalan di server."
+    ]
+  },
+  {
+    "id": "1fe008ce-3d19-4f19-8826-2a3c8f860d9f",
+    "command": "Buat 10 short Rezeki, Jodoh, Maut. Jadwal 05:30 & 15:30. Suara Gadis ('Ongloh').",
+    "status": "completed",
+    "timestamp": "2026-06-08T17:08:45.447Z",
+    "response": "Claude telah menjadwalkan 10 video Shorts bertema Rezeki, Jodoh, dan Maut. Suara Gadis telah dikonfigurasi untuk mengucapkan 'Allah' sebagai 'Ongloh' sesuai permintaan.",
+    "actionLogs": [
+      "Menulis 10 naskah motivasi Islami.",
+      "Menerapkan filter pengucapan 'Ongloh' untuk kata 'Allah' khusus pada audio.",
+      "Mengatur jadwal posting: 10 - 14 Juni (05:30 & 15:30).",
+      "Server sedang memproses antrean bulk render."
+    ]
+  },
+  {
+    "id": "cbdf3e38-844b-43b8-ae28-33a80f2e5066",
+    "command": "Buatkan 10 video islami tema rezeki, jodoh, maut, semangat, motivasi. Jadwal 1 hari 2x (04:00 & 15:00) mulai hari ini suara Gadis.",
+    "status": "completed",
+    "timestamp": "2026-06-14T22:40:30.964Z",
+    "response": "Berhasil menjadwalkan 10 video islami. Penjadwalan mulai hari ini 2026-06-15 jam 04:00 dan 15:00 menggunakan suara Gadis.",
+    "actionLogs": [
+      "Menyusun 10 judul dan narasi islami yang mudah FYP.",
+      "Mengatur jadwal upload 2 kali sehari (04:00 & 15:00).",
+      "Menggunakan voice edge-id-gadis (GadisNeural) dengan speed 0.95.",
+      "Memasukkan ke antrean render server."
+    ]
+  },
+  {
+    "id": "227c7415-f393-4ed4-bbbf-6bf2915c8b4d",
+    "command": "Buatkan 10 video islami batch 2. Jadwal mulai 20 Juni 2026, 2x sehari (04:00 & 15:00) suara Gadis.",
+    "status": "completed",
+    "timestamp": "2026-06-14T23:22:59.243Z",
+    "response": "Berhasil menjadwalkan 10 video islami tambahan. Penjadwalan mulai 20 Juni 2026 jam 04:00 dan 15:00 menggunakan suara Gadis.",
+    "actionLogs": [
+      "Menyusun 10 judul dan narasi islami batch 2 yang fresh.",
+      "Mengatur jadwal upload mulai 20 Juni 2026 (04:00 & 15:00).",
+      "Menggunakan voice edge-id-gadis (GadisNeural) dengan speed 0.95.",
+      "Memasukkan ke antrean render server."
+    ]
+  }
+]

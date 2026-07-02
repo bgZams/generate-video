@@ -9,6 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 const { generateVideo } = require('./services/videoGenerator');
 const {
     DEFAULT_MODEL,
+    VIDEO_MODE_PRESETS,
     generateIdeas,
     generateIdeasFor,
     getTitleHistory,
@@ -82,6 +83,32 @@ ensureDir('./temp');
 ensureDir('./output');
 ensureDir('./data');
 
+// ===== JOB PROGRESS TRACKING (SSE) =====
+// Map<jobId, { clients: Set<res>, phases: Object }>
+const jobProgressMap = new Map();
+
+function emitJobProgress(jobId, phase, pct, message) {
+    const job = jobProgressMap.get(jobId);
+    if (!job) return;
+    const payload = JSON.stringify({ phase, pct, message, ts: Date.now() });
+    job.clients.forEach(res => {
+        try { res.write(`data: ${payload}\n\n`); } catch (_) {}
+    });
+    // Keep last state for late-connecting clients
+    job.lastState = { phase, pct, message };
+}
+
+function cleanupJob(jobId) {
+    const job = jobProgressMap.get(jobId);
+    if (job) {
+        job.clients.forEach(res => { try { res.end(); } catch (_) {} });
+        jobProgressMap.delete(jobId);
+    }
+}
+
+// Expose emitter so videoGenerator can call it
+global.emitJobProgress = emitJobProgress;
+
 // Multer setup for handling file uploads (images/audio)
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -93,6 +120,35 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage: storage });
+
+// ===== VIDEO MODE PRESETS ENDPOINT =====
+app.get('/api/video-mode-presets', (req, res) => {
+    res.json({ success: true, presets: VIDEO_MODE_PRESETS });
+});
+
+// ===== JOB PROGRESS SSE ENDPOINT =====
+app.get('/api/job/:jobId/progress', (req, res) => {
+    const { jobId } = req.params;
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    if (!jobProgressMap.has(jobId)) {
+        jobProgressMap.set(jobId, { clients: new Set(), lastState: null });
+    }
+    const job = jobProgressMap.get(jobId);
+    job.clients.add(res);
+
+    // Send last known state immediately for reconnects
+    if (job.lastState) {
+        res.write(`data: ${JSON.stringify(job.lastState)}\n\n`);
+    }
+
+    req.on('close', () => {
+        job.clients.delete(res);
+    });
+});
 
 app.get('/api/narration/history', (req, res) => {
     try {
@@ -113,7 +169,8 @@ app.post('/api/narration/generate', async (req, res) => {
             count,
             model,
             provider,
-            apiKey
+            apiKey,
+            videoMode
         } = req.body || {};
 
         if (!topic || !topic.trim()) {
@@ -132,7 +189,8 @@ app.post('/api/narration/generate', async (req, res) => {
             topic,
             slideCount,
             count,
-            model: model || DEFAULT_MODEL
+            model: model || DEFAULT_MODEL,
+            videoMode: videoMode || 'short'
         });
 
         res.json({
@@ -392,7 +450,14 @@ app.post('/api/generate', upload.any(), async (req, res) => {
         const jobId = uuidv4();
         const outputPath = path.join('./output', `video_${jobId}.mp4`);
 
+        // Setup progress tracking for SSE
+        jobProgressMap.set(jobId, { clients: new Set(), lastState: null });
+        // Send jobId immediately so frontend can subscribe to SSE progress
+        res.setHeader('X-Job-Id', jobId);
+
+        emitJobProgress(jobId, 'starting', 2, 'Memulai proses render...');
         await generateVideo(config, outputPath, jobId);
+        emitJobProgress(jobId, 'thumbnail', 90, 'Membuat thumbnail...');
 
         // Auto-thumbnail (portrait for 9:16, landscape otherwise)
         let thumbnailUrl = null;
@@ -423,8 +488,13 @@ app.post('/api/generate', upload.any(), async (req, res) => {
             });
         }
 
+        emitJobProgress(jobId, 'done', 100, 'Video selesai! ✅');
+        // Clean up SSE connections after a short delay
+        setTimeout(() => cleanupJob(jobId), 5000);
+
         res.json({
             success: true,
+            jobId,
             videoUrl: `/output/video_${jobId}.mp4`,
             thumbnailUrl,
             usedTitle
@@ -654,6 +724,63 @@ app.post('/api/automation/run', async (req, res) => {
     }
 });
 
+// NEW: Bulk automation runner
+app.post('/api/automation/bulk-run', async (req, res) => {
+    try {
+        const { items, ...globalOptions } = req.body;
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, error: 'Items list is required' });
+        }
+
+        console.log(`📦 Bulk Automation: Received ${items.length} items to process.`);
+
+        // We process them sequentially in background to avoid hitting API limits or OOM
+        (async () => {
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                console.log(`\n📦 Processing Bulk Item ${i + 1}/${items.length}: "${item.title}"`);
+
+                try {
+                    // Merged options: global UI settings + item specific title/schedule
+                    const runOptions = {
+                        ...globalOptions,
+                        topic: item.topic,
+                        publishAt: item.publishAt,
+                    };
+
+                    await automationService.runFullWorkflow({
+                        ...runOptions,
+                        preDefinedIdea: {
+                            title: item.title,
+                            narrationSegments: item.narrationSegments,
+                            id: item.ideaId
+                        }
+                    });
+
+                    console.log(`✅ Bulk Item ${i + 1} completed.`);
+                } catch (err) {
+                    console.error(`❌ Bulk Item ${i + 1} failed:`, err.message);
+                }
+
+                // Add a safer delay between items for Gemini Free Tier (30 seconds)
+                if (i < items.length - 1) {
+                    console.log(`⏳ Waiting 30 seconds before next item to respect API quota...`);
+                    await new Promise(r => setTimeout(r, 30000));
+                }
+            }
+            console.log('\n📦 Bulk Automation: All items processed.');
+        })();
+
+        res.json({
+            success: true,
+            message: `Bulk processing for ${items.length} items started in background.`
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ===== YOUTUBE AUTH ENDPOINTS =====
 
 // Get YouTube Auth URL
@@ -750,6 +877,54 @@ app.get('/api/tiktok/callback', async (req, res) => {
 
 app.get('/api/logs', (req, res) => {
     res.json({ logs: serverLogs });
+});
+
+// MASTER COMMAND ENDPOINT (Bridge to Local Claude Agent)
+app.post('/api/master/command', async (req, res) => {
+    try {
+        const { command, settings } = req.body;
+        if (!command) return res.status(400).json({ success: false, error: 'Command is required' });
+
+        const queuePath = path.join(__dirname, 'data/master_queue.json');
+        let queue = [];
+        if (fs.existsSync(queuePath)) {
+            queue = JSON.parse(fs.readFileSync(queuePath, 'utf8'));
+        }
+
+        const requestId = uuidv4();
+        queue.push({
+            id: requestId,
+            command,
+            settings,
+            status: 'pending',
+            timestamp: new Date().toISOString()
+        });
+
+        fs.writeFileSync(queuePath, JSON.stringify(queue, null, 2));
+
+        res.json({
+            success: true,
+            requestId,
+            message: `Perintah diterima. Menghubungkan ke Claude Agent di terminal lokal...`
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Endpoint untuk UI mengecek status respon dari Claude
+app.get('/api/master/response/:id', (req, res) => {
+    const queuePath = path.join(__dirname, 'data/master_queue.json');
+    if (!fs.existsSync(queuePath)) return res.json({ status: 'waiting' });
+
+    const queue = JSON.parse(fs.readFileSync(queuePath, 'utf8'));
+    const item = queue.find(i => i.id === req.params.id);
+
+    if (item && item.status === 'completed') {
+        res.json({ status: 'completed', response: item.response, actionLogs: item.actionLogs });
+    } else {
+        res.json({ status: 'waiting' });
+    }
 });
 
 // Initialize Scheduler

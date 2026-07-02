@@ -17,8 +17,84 @@ document.addEventListener('DOMContentLoaded', () => {
     let slideCount = document.querySelectorAll('.slide-item').length;
     let selectedIdeaId = '';
     let selectedIdeaTitle = '';
-    let voiceSelection = 'shimmer'; // Default soft voice
-    let speedSelection = 1.0; // Default normal speed
+    let voiceSelection = 'shimmer';
+    let speedSelection = 1.0;
+
+    // ===== VIDEO MODE STATE =====
+    const VIDEO_MODE_PRESETS = {
+        short:  { slideCount: 9,  maxDurationSec: 58,  resolutionDefault: '9:16',  label: 'Shorts / Reels' },
+        medium: { slideCount: 25, maxDurationSec: 300, resolutionDefault: '16:9',  label: 'Video Standar (2-5 menit)' },
+        long:   { slideCount: 50, maxDurationSec: 900, resolutionDefault: '16:9',  label: 'Video Panjang (5-15 menit)' }
+    };
+    const ESTIMATOR_TEXTS = {
+        short:  { slides: '9 slides', est: '30–58 detik' },
+        medium: { slides: '25 slides', est: '2–5 menit' },
+        long:   { slides: '50 slides', est: '5–15 menit' }
+    };
+    let currentVideoMode = 'short';
+
+    function updateEstimator(mode) {
+        const info = ESTIMATOR_TEXTS[mode] || ESTIMATOR_TEXTS.short;
+        const preset = VIDEO_MODE_PRESETS[mode] || VIDEO_MODE_PRESETS.short;
+        const el = document.getElementById('estimator-text');
+        if (el) el.innerHTML = `Mode: <strong>${VIDEO_MODE_PRESETS[mode]?.label || mode}</strong> — ~${info.slides}, estimasi <strong>${info.est}</strong>`;
+        // Auto-update resolution
+        const resEl = document.getElementById('resolution');
+        if (resEl) resEl.value = preset.resolutionDefault;
+    }
+
+    // Mode card click handler
+    document.querySelectorAll('.mode-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            currentVideoMode = card.dataset.mode;
+            updateEstimator(currentVideoMode);
+        });
+    });
+
+    updateEstimator('short'); // init
+
+    // ===== SSE PROGRESS TRACKING =====
+    let progressSSE = null;
+
+    function updateProgressUI(phase, pct, message) {
+        const fillEl = document.getElementById('progress-bar-fill');
+        const pctEl = document.getElementById('progress-pct');
+        const txtEl = document.getElementById('progress-text');
+        if (fillEl) fillEl.style.width = `${pct}%`;
+        if (pctEl) pctEl.textContent = `${Math.round(pct)}%`;
+        if (txtEl) txtEl.textContent = message || 'Memproses...';
+
+        // Update phase indicators
+        const phaseOrder = ['tts', 'image', 'render', 'bgm', 'thumbnail', 'done'];
+        const activeIdx = phaseOrder.indexOf(phase);
+        document.querySelectorAll('.phase-item').forEach((el, i) => {
+            el.classList.remove('active', 'done');
+            if (i < activeIdx) el.classList.add('done');
+            else if (i === activeIdx) el.classList.add('active');
+        });
+    }
+
+    function startProgressSSE(jobId) {
+        if (progressSSE) { progressSSE.close(); progressSSE = null; }
+        if (!jobId) return;
+        progressSSE = new EventSource(`/api/job/${jobId}/progress`);
+        progressSSE.onmessage = (ev) => {
+            try {
+                const { phase, pct, message } = JSON.parse(ev.data);
+                updateProgressUI(phase, pct, message);
+                if (phase === 'done') {
+                    progressSSE.close();
+                    progressSSE = null;
+                }
+            } catch (_) {}
+        };
+        progressSSE.onerror = () => {
+            progressSSE.close();
+            progressSSE = null;
+        };
+    }
 
     // ===== AI PROVIDER / API KEY PERSISTENCE =====
     const LS_KEYS = {
@@ -529,13 +605,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleGenerateIdeas() {
-        const slidePanels = getSlidePanels();
-        const slideTarget = slidePanels.length || 1;
+        const preset = VIDEO_MODE_PRESETS[currentVideoMode] || VIDEO_MODE_PRESETS.short;
+        const slideTarget = preset.slideCount;
         const topic = ideaTopicInput.value.trim();
         const count = Math.max(1, Math.min(10, parseInt(ideaCountInput.value, 10) || 5));
 
         setIdeaLoading(true);
-        setIdeaStatus('Gemini AI sedang membuat daftar judul dan narasi...');
+        setIdeaStatus(`AI sedang membuat ${count} judul + narasi [mode: ${currentVideoMode}]...`);
 
         try {
             const aiCfg = getActiveAIConfig();
@@ -545,16 +621,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const response = await fetch('/api/narration/generate', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     topic,
                     count,
                     slideCount: slideTarget,
                     provider: aiCfg.provider,
                     apiKey: aiCfg.apiKey,
-                    model: aiCfg.model || modelSelect.value
+                    model: aiCfg.model || modelSelect.value,
+                    videoMode: currentVideoMode
                 })
             });
 
@@ -572,7 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 emptyText: 'Belum ada histori judul.'
             });
 
-                        // AUTO-APPLY FIRST IDEA TO SLIDES
+            // AUTO-APPLY FIRST IDEA TO SLIDES
             if (data.ideas && data.ideas.length > 0) {
                 const firstIdea = data.ideas[0];
                 applyIdeaToSlides(firstIdea);
@@ -673,6 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
             vignette: formData.get('vignette') === 'on',
             storyTitle: (formData.get('story_title') || '').trim(),
             storyIdeaId: selectedIdeaId || '',
+            videoMode: currentVideoMode,
             // Pro pipeline flags (defaults = ON to match backend)
             captions:           proCaptions       ? proCaptions.checked       : true,
             captionChunkSize:   proCaptionChunk   ? parseInt(proCaptionChunk.value, 10) || 2 : 2,
@@ -715,6 +791,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         finalFormData.append('payload', JSON.stringify(config));
 
+        // Reset progress UI
+        updateProgressUI('starting', 2, 'Memulai proses render...');
         document.getElementById('progress-overlay').style.display = 'flex';
         document.getElementById('btn-generate').disabled = true;
         document.querySelector('.btn-text').textContent = 'Generating...';
@@ -726,6 +804,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 body: finalFormData
             });
+
+            // Grab jobId from response header for SSE progress
+            const jobId = response.headers.get('X-Job-Id');
+            if (jobId) startProgressSSE(jobId);
 
             const data = await response.json();
 
@@ -768,8 +850,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             document.getElementById('progress-overlay').style.display = 'none';
             document.getElementById('btn-generate').disabled = false;
-            document.querySelector('.btn-text').textContent = 'Generate Video';
+            document.querySelector('.btn-text').textContent = '🎬 Generate Video';
             document.querySelector('.spinner').style.display = 'none';
+            if (progressSSE) { progressSSE.close(); progressSSE = null; }
         }
     });
 
@@ -1164,6 +1247,297 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start polling every 2 seconds
     setInterval(pollLogs, 2000);
     pollLogs();
+
+    // ===== BULK AUTOMATION LOGIC =====
+    const bulkTopicInput = document.getElementById('bulk_topic');
+    const bulkCountSelect = document.getElementById('bulk_count');
+    const btnBulkGenerateTitles = document.getElementById('btn-bulk-generate-titles');
+    const btnBulkAddManual = document.getElementById('btn-bulk-add-manual');
+    const btnBulkProcessAll = document.getElementById('btn-bulk-process-all');
+    const bulkTitleList = document.getElementById('bulk-title-list');
+    const bulkItemsContainer = document.getElementById('bulk-items-container');
+
+    let bulkGeneratedIdeas = [];
+
+    if (btnBulkGenerateTitles) {
+        btnBulkGenerateTitles.addEventListener('click', async () => {
+            const topic = bulkTopicInput.value.trim();
+            const count = parseInt(bulkCountSelect.value, 10);
+
+            if (!topic) {
+                alert('Silakan masukkan tema utama terlebih dahulu.');
+                return;
+            }
+
+            btnBulkGenerateTitles.disabled = true;
+            btnBulkGenerateTitles.textContent = '⏳ Sedang generate judul terbaik...';
+
+            try {
+                const aiCfg = getActiveAIConfig();
+                if (!aiCfg.apiKey) {
+                    throw new Error(`API key ${aiCfg.provider.toUpperCase()} belum diisi. Isi di panel AI.`);
+                }
+
+                const response = await fetch('/api/narration/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic,
+                        count,
+                        slideCount: 9,
+                        provider: aiCfg.provider,
+                        apiKey: aiCfg.apiKey,
+                        model: aiCfg.model
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Gagal generate judul.');
+                }
+
+                // Add to current list
+                bulkGeneratedIdeas = [...bulkGeneratedIdeas, ...(data.ideas || [])];
+                renderBulkItems(bulkGeneratedIdeas);
+                bulkTitleList.style.display = 'block';
+                bulkTitleList.scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btnBulkGenerateTitles.disabled = false;
+                btnBulkGenerateTitles.textContent = 'Step 1: Generate Judul Terbaik (AI)';
+            }
+        });
+    }
+
+    if (btnBulkAddManual) {
+        btnBulkAddManual.addEventListener('click', () => {
+            const manualIdea = {
+                id: 'manual-' + Date.now(),
+                title: 'Judul Video Baru',
+                summary: 'Ringkasan video manual.',
+                narrationSegments: Array(9).fill('Ketik narasi slide di sini...'),
+                isManual: true
+            };
+            bulkGeneratedIdeas.push(manualIdea);
+            renderBulkItems(bulkGeneratedIdeas);
+            bulkTitleList.style.display = 'block';
+        });
+    }
+
+    function renderBulkItems(ideas) {
+        bulkItemsContainer.innerHTML = '';
+
+        let now = new Date();
+        now.setMinutes(now.getMinutes() + 30);
+
+        ideas.forEach((idea, index) => {
+            const item = document.createElement('div');
+            item.className = 'bulk-item';
+            item.style.flexDirection = 'column';
+            item.style.alignItems = 'stretch';
+
+            const schedTime = new Date(now.getTime() + index * 2 * 60 * 60 * 1000);
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(schedTime - tzoffset)).toISOString().slice(0, 16);
+
+            const narrationHtml = (idea.narrationSegments || [])
+                .map((text, sIdx) => `
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.7rem; opacity: 0.6;">Slide ${sIdx+1}</label>
+                        <textarea class="bulk-edit-narration" data-video="${index}" data-slide="${sIdx}" style="min-height: 40px; font-size: 0.85rem; padding: 5px 8px;">${text}</textarea>
+                    </div>
+                `).join('');
+
+            item.innerHTML = `
+                <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px;">
+                    <div style="flex: 1;">
+                        <input type="text" class="bulk-item-title" value="${idea.title}" data-index="${index}" style="font-weight: bold; border-color: rgba(99, 102, 241, 0.4);">
+                    </div>
+                    <div class="bulk-item-schedule" style="min-width: 180px;">
+                        <input type="datetime-local" class="bulk-item-time" value="${localISOTime}" data-index="${index}">
+                    </div>
+                    <button type="button" class="btn-icon delete-bulk-item" data-index="${index}" style="color: #ef4444; font-size: 1.2rem;">&times;</button>
+                </div>
+
+                <details style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px;">
+                    <summary style="cursor: pointer; font-size: 0.85rem; color: #a5b4fc;">📝 Edit Narasi Slide (${idea.narrationSegments.length} Slide)</summary>
+                    <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        ${narrationHtml}
+                    </div>
+                </details>
+            `;
+            bulkItemsContainer.appendChild(item);
+        });
+
+        // Add delete listeners
+        document.querySelectorAll('.delete-bulk-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(btn.dataset.index);
+                bulkGeneratedIdeas.splice(idx, 1);
+                renderBulkItems(bulkGeneratedIdeas);
+            });
+        });
+    }
+
+    if (btnBulkProcessAll) {
+        btnBulkProcessAll.addEventListener('click', async () => {
+            const items = document.querySelectorAll('.bulk-item');
+            if (items.length === 0) return;
+
+            // Sync edited narrations back to bulkGeneratedIdeas array
+            document.querySelectorAll('.bulk-edit-narration').forEach(textarea => {
+                const vIdx = parseInt(textarea.dataset.video);
+                const sIdx = parseInt(textarea.dataset.slide);
+                bulkGeneratedIdeas[vIdx].narrationSegments[sIdx] = textarea.value;
+            });
+
+            if (!confirm(`Mulai memproses ${items.length} video? Judul dan narasi yang Anda edit akan digunakan.`)) {
+                return;
+            }
+
+            const aiCfg = getActiveAIConfig();
+            const bulkData = Array.from(items).map((item, index) => {
+                const title = item.querySelector('.bulk-item-title').value;
+                const time = item.querySelector('.bulk-item-time').value;
+                const idea = bulkGeneratedIdeas[index];
+
+                return {
+                    title,
+                    publishAt: time ? new Date(time).toISOString() : null,
+                    topic: bulkTopicInput.value || idea.topic || 'Custom Video',
+                    ideaId: idea.id,
+                    narrationSegments: idea.narrationSegments
+                };
+            });
+
+            btnBulkProcessAll.disabled = true;
+            btnBulkProcessAll.textContent = '⏳ Mengirim permintaan ke server...';
+
+            try {
+                const response = await fetch('/api/automation/bulk-run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: bulkData,
+                        provider: aiCfg.provider,
+                        aiApiKey: aiCfg.apiKey,
+                        model: aiCfg.model,
+                        // Global settings from UI
+                        voice: document.getElementById('narrator_voice').value,
+                        speed: parseFloat(document.getElementById('narrator_speed').value) || 0.9,
+                        bgmMood: document.getElementById('bgm_mood').value,
+                        visualEffect: document.getElementById('visual_effect').value || 'none',
+                        vignette: document.getElementById('vignette').checked || false,
+                        platforms: {
+                            youtube:  document.getElementById('target-youtube')?.checked !== false,
+                            facebook: document.getElementById('target-facebook')?.checked !== false,
+                            tiktok:   document.getElementById('target-tiktok')?.checked !== false
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert(`Berhasil! ${items.length} tugas telah ditambahkan ke antrean server.\n\nAnda dapat melihat progress di log console.`);
+                    bulkTitleList.style.display = 'none';
+                    bulkTopicInput.value = '';
+                } else {
+                    throw new Error(data.error || 'Gagal memproses bulk.');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btnBulkProcessAll.disabled = false;
+                btnBulkProcessAll.textContent = 'Step 3: PROSES SEMUA VIDEO & UPLOAD';
+            }
+        });
+    }
+
+    // ===== MASTER TERMINAL LOGIC =====
+    const terminalInput = document.getElementById('terminal-input');
+    const btnSendCommand = document.getElementById('btn-send-command');
+
+    function addToTerminal(msg, type = 'info') {
+        const div = document.createElement('div');
+        div.style.marginBottom = '6px';
+        div.style.paddingLeft = '10px';
+
+        const colors = {
+            info: '#e0e7ff',
+            success: '#10b981',
+            error: '#fca5a5',
+            ai: '#a5b4fc',
+            user: '#6366f1'
+        };
+
+        if (type === 'user') {
+            div.innerHTML = `<span style="color: ${colors.user}; font-weight: bold;">YOU > </span> ${msg}`;
+        } else if (type === 'ai') {
+            div.innerHTML = `<span style="color: ${colors.ai}; font-weight: bold;">CLAUDE > </span> ${msg}`;
+        } else {
+            div.style.borderLeft = `2px solid ${colors[type] || colors.info}`;
+            div.textContent = msg;
+        }
+
+        logConsole.appendChild(div);
+        logConsole.scrollTop = logConsole.scrollHeight;
+    }
+
+    async function handleMasterCommand() {
+        const cmd = terminalInput.value.trim();
+        if (!cmd) return;
+
+        addToTerminal(cmd, 'user');
+        terminalInput.value = '';
+        terminalInput.disabled = true;
+        btnSendCommand.disabled = true;
+
+        addToTerminal('Claude is connecting from local terminal...', 'ai');
+
+        try {
+            const response = await fetch('/api/master/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: cmd })
+            });
+
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error);
+
+            const requestId = data.requestId;
+
+            // Polling for Claude's response from terminal
+            const pollInterval = setInterval(async () => {
+                const res = await fetch(`/api/master/response/${requestId}`);
+                const statusData = await res.json();
+
+                if (statusData.status === 'completed') {
+                    clearInterval(pollInterval);
+                    addToTerminal(statusData.response || 'Perintah selesai dieksekusi!', 'ai');
+                    if (statusData.actionLogs) {
+                        statusData.actionLogs.forEach(log => addToTerminal(`→ ${log}`, 'info'));
+                    }
+                    terminalInput.disabled = false;
+                    btnSendCommand.disabled = false;
+                    terminalInput.focus();
+                }
+            }, 2000);
+
+        } catch (error) {
+            addToTerminal('Error: ' + error.message, 'error');
+            terminalInput.disabled = false;
+            btnSendCommand.disabled = false;
+        }
+    }
+
+    if (btnSendCommand) btnSendCommand.addEventListener('click', handleMasterCommand);
+    if (terminalInput) {
+        terminalInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleMasterCommand();
+        });
+    }
 
     // Initial load
     updateSchedulerUI();

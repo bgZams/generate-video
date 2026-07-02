@@ -134,7 +134,7 @@ class YouTubeService {
                     console.log(`   ✅ Thumbnail uploaded.`);
                 } catch (thumbErr) {
                     // Non-fatal — thumbnail permission may not be granted for all channels
-                    console.warn(`   ⚠️ Thumbnail upload failed: ${thumbErr.message}`);
+                    console.warn(`   ⚠️ Thumbnail upload failed: ${thumbErr.response?.data?.error?.message || thumbErr.message}`);
                     thumbnailResult = { success: false, error: thumbErr.message };
                 }
             }

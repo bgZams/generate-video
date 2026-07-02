@@ -6,7 +6,11 @@
       "Bash(git checkout *)",
       "Bash(git reset *)",
       "Bash(node -c services/videoGenerator.js)",
-      "Bash(node -c services/automationService.js)"
+      "Bash(node -c services/automationService.js)",
+      "PowerShell(node claude_master_runner.js)",
+      "PowerShell(node claude_master_runner_2.js)",
+      "Bash(node *)",
+      "Bash(curl -s http://localhost:3000/api/logs)"
     ]
   }
 }

@@ -207,8 +207,24 @@ async function generateYouTubeMetadata(params) {
         console.log(`✅ YouTube metadata generated successfully via ${provider}`);
         return metadata;
     } catch (error) {
-        console.error('❌ Error generating metadata:', error.message);
-        throw error;
+        console.error('⚠️ Warning: Error generating AI metadata (Quota maybe?):', error.message);
+
+        // GRACEFUL FALLBACK: Use basic metadata if AI fails
+        // This ensures the automation pipeline doesn't crash completely.
+        const fallbackMetadata = {
+            primary: { title, topic, summary },
+            titles: { primary: title, variations: [title], count: 1 },
+            description: `${title}\n\n${summary}\n\n#Shorts #Viral #Trending #Edukasi`,
+            hashtags: ['#Shorts', '#Viral', '#Trending', '#FaktaUnik'],
+            tags: [topic, 'Shorts', 'Viral', 'Edukasi'],
+            combined: ['#Shorts', '#Viral', topic],
+            keywords: keywords,
+            generatedAt: new Date().toISOString(),
+            status: 'fallback'
+        };
+
+        console.log('ℹ️ Using fallback metadata to continue workflow.');
+        return fallbackMetadata;
     }
 }
 

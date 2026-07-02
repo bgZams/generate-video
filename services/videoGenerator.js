@@ -85,19 +85,58 @@ const getDuration = (filePath) => {
 };
 
 const runFFmpeg = (args) => {
+    let newArgs = [];
+    const tempFiles = [];
     try {
-        execFileSync(FFMPEG_BIN, args, { stdio: 'pipe', timeout: 600000 });
+        // Windows command line limit is 8191 chars.
+        // Intercept long filters and write them to a script file.
+        for (let i = 0; i < args.length; i++) {
+            if (args[i] === '-filter_complex' || args[i] === '-vf') {
+                const filterStr = args[i + 1];
+                if (filterStr && filterStr.length > 2000) {
+                    // Make sure temp directory exists
+                    const tempDir = path.join(__dirname, '..', 'temp');
+                    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+                    
+                    const tempScriptPath = path.join(tempDir, `filter_${Date.now()}_${Math.random().toString(36).substring(7)}.txt`);
+                    // FFmpeg script files should ideally be UTF-8
+                    fs.writeFileSync(tempScriptPath, filterStr, 'utf8');
+                    tempFiles.push(tempScriptPath);
+                    
+                    if (args[i] === '-filter_complex') {
+                        newArgs.push('-filter_complex_script', tempScriptPath);
+                    } else {
+                        newArgs.push('-filter_script:v', tempScriptPath);
+                    }
+                    i++;
+                    continue;
+                }
+            }
+            newArgs.push(args[i]);
+        }
+        // Increase timeout to 1 hour (3600000 ms) for long-form video rendering
+        execFileSync(FFMPEG_BIN, newArgs, { stdio: 'pipe', timeout: 3600000 });
     } catch (e) {
         const stderr = e.stderr ? e.stderr.toString().slice(-500) : e.message;
         console.error("FFmpeg Error:", stderr);
         throw new Error("FFmpeg failed: " + stderr.substring(0, 200));
+    } finally {
+        for (const file of tempFiles) {
+            try { if (fs.existsSync(file)) fs.unlinkSync(file); } catch (_) {}
+        }
     }
 };
 
-// ===== AUTO IMAGE SEARCH =====
+// ===== AUTO IMAGE SEARCH (Pexels → Picsum → Gradient fallback) =====
+
+const PEXELS_API_KEY_IMG = process.env.PEXELS_API_KEY;
+const PEXELS_PHOTO_API   = 'https://api.pexels.com/v1/search';
+
+// In-memory cache per job: query → localPath (avoid re-downloading same photo)
+const _imgCache = new Map();
 
 const extractKeywords = (text) => {
-    const stopWords = ['yang', 'dan', 'di', 'ke', 'dari', 'ini', 'itu', 'dengan', 'untuk', 'pada', 'adalah', 'akan', 'sudah', 'juga', 'lebih', 'sangat', 'bisa', 'ada', 'tidak', 'kamu', 'anda', 'saya', 'mereka', 'kita', 'orang', 'secara', 'suka', 'baru', 'pola', 'dapat', 'tetap', 'agar', 'bahwa', 'oleh', 'karena', 'maka', 'tahukah', 'apakah', 'namun', 'jadi', 'pastikan', 'memiliki', 'tinggi', 'seperti', 'hanya', 'telah', 'masih', 'sering', 'pernah'];
+    const stopWords = ['yang', 'dan', 'di', 'ke', 'dari', 'ini', 'itu', 'dengan', 'untuk', 'pada', 'adalah', 'akan', 'sudah', 'juga', 'lebih', 'sangat', 'bisa', 'ada', 'tidak', 'kamu', 'anda', 'saya', 'mereka', 'kita', 'orang', 'secara', 'suka', 'baru', 'pola', 'dapat', 'tetap', 'agar', 'bahwa', 'oleh', 'karena', 'maka', 'tahukah', 'apakah', 'namun', 'jadi', 'pastikan', 'memiliki', 'tinggi', 'seperti', 'hanya', 'telah', 'masih', 'sering', 'pernah', 'setiap', 'semua', 'kita', 'ini', 'itu', 'oleh', 'jika', 'maka', 'sudah', 'pun', 'pula', 'lalu', 'kemudian', 'setelah', 'sebelum', 'ketika'];
     const words = text.toLowerCase()
         .replace(/[^a-zA-Z\s]/g, '')
         .split(/\s+/)
@@ -106,21 +145,89 @@ const extractKeywords = (text) => {
     return unique.slice(0, 3).join(' ');
 };
 
+// Translate common Indonesian keywords to English for better Pexels results
+const ID_TO_EN = {
+    'motivasi': 'motivation', 'inspirasi': 'inspiration', 'sukses': 'success',
+    'kehidupan': 'life', 'alam': 'nature', 'hutan': 'forest', 'laut': 'ocean',
+    'gunung': 'mountain', 'kota': 'city', 'bisnis': 'business', 'uang': 'money',
+    'keluarga': 'family', 'cinta': 'love', 'islam': 'mosque', 'masjid': 'mosque',
+    'doa': 'prayer', 'hati': 'heart', 'damai': 'peace', 'bahagia': 'happy',
+    'waktu': 'time', 'dunia': 'world', 'manusia': 'human', 'bumi': 'earth',
+    'langit': 'sky', 'bintang': 'stars', 'matahari': 'sun', 'bulan': 'moon',
+    'fakta': 'facts', 'sejarah': 'history', 'teknologi': 'technology',
+    'sains': 'science', 'makanan': 'food', 'kesehatan': 'health',
+    'olahraga': 'sport', 'pendidikan': 'education', 'hijrah': 'journey',
+};
+
+function translateKeywords(text) {
+    let result = text.toLowerCase();
+    for (const [id, en] of Object.entries(ID_TO_EN)) {
+        if (result.includes(id)) result = result.replace(new RegExp(id, 'g'), en);
+    }
+    return result;
+}
+
 const autoSearchImage = async (text, destPath, width, height) => {
-    const keywords = extractKeywords(text);
-    console.log(`  Auto-search keywords: "${keywords}"`);
-    const seed = keywords.replace(/\s+/g, '-');
+    const cacheKey = `${text.slice(0, 60)}_${width}x${height}`;
+    if (_imgCache.has(cacheKey)) {
+        const cached = _imgCache.get(cacheKey);
+        if (cached !== destPath && require('fs').existsSync(cached)) {
+            require('fs').copyFileSync(cached, destPath);
+            console.log(`  Image from cache`);
+            return destPath;
+        }
+    }
+
+    const rawKeywords = extractKeywords(text);
+    const engKeywords = translateKeywords(rawKeywords) || 'landscape nature';
+    console.log(`  Image search: "${rawKeywords}" → "${engKeywords}"`);
+
+    // --- Tier 1: Pexels Photos API ---
+    if (PEXELS_API_KEY_IMG) {
+        try {
+            const orientation = parseInt(height) > parseInt(width) ? 'portrait' : 'landscape';
+            const page = Math.floor(Math.random() * 5) + 1; // random page 1-5 for variety
+            const response = await axios.get(PEXELS_PHOTO_API, {
+                headers: { Authorization: PEXELS_API_KEY_IMG },
+                params: { query: engKeywords, per_page: 10, page, orientation },
+                timeout: 12000
+            });
+            const photos = response.data?.photos || [];
+            if (photos.length > 0) {
+                const pick = photos[Math.floor(Math.random() * photos.length)];
+                // Choose size closest to our resolution
+                const imgUrl = parseInt(width) >= 1080
+                    ? (pick.src.large2x || pick.src.large || pick.src.original)
+                    : (pick.src.large || pick.src.medium);
+                const imgResp = await axios({ url: imgUrl, method: 'GET', responseType: 'arraybuffer', maxRedirects: 5, timeout: 20000 });
+                require('fs').writeFileSync(destPath, imgResp.data);
+                console.log(`  ✅ Pexels image: ${pick.alt || engKeywords} (${(imgResp.data.length/1024).toFixed(0)}KB)`);
+                _imgCache.set(cacheKey, destPath);
+                return destPath;
+            }
+        } catch (e) {
+            console.log(`  ⚠️ Pexels failed (${e.message?.slice(0, 60)}), trying Picsum...`);
+        }
+    }
+
+    // --- Tier 2: Picsum (random but deterministic per keyword) ---
     try {
+        const seed = rawKeywords.replace(/\s+/g, '-') || 'abstract';
         const url = `https://picsum.photos/seed/${encodeURIComponent(seed)}/${width}/${height}`;
         const response = await axios({ url, method: 'GET', responseType: 'arraybuffer', maxRedirects: 5, timeout: 15000 });
-        fs.writeFileSync(destPath, response.data);
-        console.log(`  Image downloaded (${(response.data.length / 1024).toFixed(0)}KB)`);
+        require('fs').writeFileSync(destPath, response.data);
+        console.log(`  Image from Picsum (${(response.data.length/1024).toFixed(0)}KB)`);
+        _imgCache.set(cacheKey, destPath);
         return destPath;
     } catch (e) {
         console.log(`  Picsum failed: ${e.message}`);
     }
+
+    // --- Tier 3: FFmpeg gradient fallback ---
     console.log(`  Generating gradient background...`);
-    runFFmpeg(['-y', '-f', 'lavfi', '-i', `color=c=0x1a1a2e:s=${width}x${height}:d=1`, '-frames:v', '1', destPath]);
+    const colors = ['0x1a1a2e', '0x16213e', '0x0f3460', '0x1b1b2f', '0x2c003e'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    runFFmpeg(['-y', '-f', 'lavfi', '-i', `color=c=${color}:s=${width}x${height}:d=1`, '-frames:v', '1', destPath]);
     return destPath;
 };
 
