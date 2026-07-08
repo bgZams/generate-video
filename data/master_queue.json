@@ -160,5 +160,17 @@
       "Menggunakan voice edge-id-gadis (GadisNeural) dengan speed 0.95.",
       "Memasukkan ke antrean render server."
     ]
+  },
+  {
+    "id": "ae3e93ba-b7e8-4f38-999c-62f355d141f5",
+    "command": "Buatkan 10 video short dengan minimal durasi 2 menit dengan tema \"jodoh, rezeki dan maut\" jadwalkan untuk besok 2 kali dalam 1 hari jam 05:30 dan 15:30",
+    "status": "pending",
+    "timestamp": "2026-07-06T06:39:25.708Z"
+  },
+  {
+    "id": "20312fa8-43ff-4e3a-b096-30952cdf772d",
+    "command": "Buatkan 10 video short dengan minimal durasi 2 menit dengan tema \"jodoh, rezeki dan maut\" jadwalkan untuk besok 2 kali dalam 1 hari jam 05:30 dan 15:30",
+    "status": "pending",
+    "timestamp": "2026-07-06T06:40:45.314Z"
   }
 ]
