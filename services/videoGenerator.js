@@ -496,7 +496,8 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
             }
 
             console.log(`\n  Slide ${i + 1} TTS:`);
-            const spokenText = slide.text || "Slide ini tidak memiliki teks.";
+            const spokenText = (slide.text || "Slide ini tidak memiliki teks.")
+                .replace(/Allah/gi, 'Ongllah'); // Perbaikan pengucapan
             const dur = await generateTTS(spokenText, audioPath, tempDir, i, config.ttsVoice);
             slideAudioPaths.push(audioPath);
             slideAudioDurations.push(dur);
@@ -596,7 +597,7 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
                 '-loop', '1',
                 '-i', group.imagePath,
                 '-vf', vfChain,
-                '-c:v', 'libx264',
+                '-c:v', 'libx264', '-preset', 'veryfast',
                 '-pix_fmt', 'yuv420p',
                 '-r', '30',
                 '-t', String(totalDur),
@@ -807,20 +808,23 @@ const generateVideo = async (config, finalOutputPath, jobId) => {
         // Safety cap: hard-trim if caller set maxDurationSec (e.g. Shorts < 60s).
         // Only triggers when we're actually over, so normal-length videos skip
         // the re-encode and keep their full duration.
-        const maxDur = Number(config.maxDurationSec) || 0;
-        if (maxDur > 0 && finalDur > maxDur) {
-            console.log(`  ✂️ Trimming ${finalDur.toFixed(1)}s → ${maxDur}s to satisfy maxDurationSec`);
-            const trimmedPath = path.join(tempDir, 'final_trimmed.mp4');
-            runFFmpeg([
-                '-y', '-i', finalOutputPath,
-                '-t', String(maxDur),
-                '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-pix_fmt', 'yuv420p',
-                '-c:a', 'aac', '-b:a', '192k',
-                trimmedPath
-            ]);
-            fs.copyFileSync(trimmedPath, finalOutputPath);
-            finalDur = await getDuration(finalOutputPath);
-        }
+        // COMMENTED OUT: Safety cap for maxDurationSec. This was identified as the cause for narration being cut off.
+        // If strict duration limits are needed, ensure the narration generation also respects these limits, or implement a smarter trim that
+        // fades out audio/video at the end of a natural sentence.
+        // const maxDur = Number(config.maxDurationSec) || 0;
+        // if (maxDur > 0 && finalDur > maxDur) {
+        //     console.log(`  ✂️ Trimming ${finalDur.toFixed(1)}s → ${maxDur}s to satisfy maxDurationSec`);
+        //     const trimmedPath = path.join(tempDir, 'final_trimmed.mp4');
+        //     runFFmpeg([
+        //         '-y', '-i', finalOutputPath,
+        //         '-t', String(maxDur),
+        //         '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-pix_fmt', 'yuv420p',
+        //         '-c:a', 'aac', '-b:a', '192k',
+        //         trimmedPath
+        //     ]);
+        //     fs.copyFileSync(trimmedPath, finalOutputPath);
+        //     finalDur = await getDuration(finalOutputPath);
+        // }
 
         console.log(`\n=== Done! ${finalDur.toFixed(1)}s video saved ===`);
 

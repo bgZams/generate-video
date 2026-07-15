@@ -1,0 +1,43 @@
+<!-- ===== AI NARRATION PANEL ===== -->
+<div class="glass-panel ai-panel">
+    <div class="panel-heading">
+        <div>
+            <h2>🤖 AI Judul &amp; Narasi</h2>
+            <p>Generate ide judul + narasi lengkap dari AI sesuai mode yang dipilih.</p>
+        </div>
+        <button type="button" id="btn-refresh-history" class="btn-secondary compact-btn">↻ History</button>
+    </div>
+
+    <div style="margin-bottom:1.5rem; background:rgba(99,102,241,0.06); padding:1rem; border-radius:8px; border:1px solid rgba(99,102,241,0.15);">
+        <small>💡 <strong>AI Provider &amp; API Key</strong> sekarang dikonfigurasi secara terpusat di tab <strong style="color:#a5b4fc;">Global Settings</strong>.</small>
+    </div>
+
+    <div class="ai-grid">
+        <div class="form-group">
+            <label for="idea_topic">Tema / Brief</label>
+            <textarea id="idea_topic" placeholder="Contoh: Fakta unik hewan laut, tips usaha rumahan, sejarah singkat tokoh dunia, kisah inspiratif Islam..."></textarea>
+        </div>
+        <div class="form-group">
+            <label for="idea_count">Jumlah Ide</label>
+            <input type="number" id="idea_count" min="1" max="10" value="5">
+            <small>Jumlah slide akan mengikuti mode yang dipilih di atas.</small>
+        </div>
+    </div>
+
+    <div class="ai-actions">
+        <button type="button" id="btn-generate-ideas" class="btn-primary">✨ Generate Judul &amp; Narasi</button>
+        <span id="idea-status" class="status-text">Belum ada ide yang digenerate.</span>
+    </div>
+
+    <div class="ai-results">
+        <div>
+            <h3>Hasil AI</h3>
+            <div id="idea-results" class="idea-list empty-state">Belum ada hasil. Isi brief lalu generate.</div>
+        </div>
+        <div>
+            <h3>Riwayat Judul</h3>
+            <div id="history-results" class="idea-list empty-state">Memuat histori judul...</div>
+        </div>
+    </div>
+</div>
+<script type="module" src="js/aiNarrationPanel.js"></script>

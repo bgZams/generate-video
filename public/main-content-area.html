@@ -1,0 +1,61 @@
+<!-- Component Loading Area -->
+<div id="component-container"></div>
+
+<!-- Video Mode Selector Component -->
+<div id="video-mode-selector-component" class="component-section" style="display:none;"></div>
+
+<!-- Global Settings Component -->
+<div id="global-settings-component" class="component-section" style="display:none;"></div>
+
+<!-- AI Narration Panel Component -->
+<div id="ai-narration-panel-component" class="component-section" style="display:none;"></div>
+
+<!-- Bulk Mode Panel Component -->
+<div id="bulk-mode-panel-component" class="component-section" style="display:none;"></div>
+
+<!-- Slides Editor Component -->
+<div id="slides-editor-component" class="component-section" style="display:none;"></div>
+
+<!-- Automation Connect Component -->
+<div id="automation-connect-component" class="component-section" style="display:none;"></div>
+
+<!-- AI Console Component -->
+<div id="ai-console-component" class="component-section" style="display:none;"></div>
+
+<!-- Result and Progress sections -->
+<div id="result-container" class="glass-panel result-panel" style="display: none;">
+    <h2>🎬 Video Siap!</h2>
+    <video id="result-video" controls></video>
+    <a id="download-btn" href="#" download="generated_video.mp4" class="btn-primary">⬇️ Download MP4</a>
+
+    <div id="result-thumbnail-wrapper" style="display:none; margin-top:24px; text-align:center;">
+        <h3 style="margin-bottom:12px;">🖼️ Auto-Thumbnail</h3>
+        <img id="result-thumbnail" alt="Auto-generated thumbnail"
+             style="max-width:100%; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.3);">
+        <div style="margin-top:12px;">
+            <a id="thumbnail-download-btn" href="#" download="thumbnail.png" class="btn-secondary">Download Thumbnail PNG</a>
+        </div>
+    </div>
+</div>
+
+<div id="progress-overlay" class="overlay" style="display: none;">
+    <div class="glass-panel progress-box">
+        <div class="spinner-large"></div>
+        <h3 id="progress-text">Memulai proses...</h3>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="progress-bar-fill" style="width:0%"></div>
+            </div>
+            <span class="progress-pct" id="progress-pct">0%</span>
+        </div>
+        <div class="progress-phases" id="progress-phases">
+            <div class="phase-item" data-phase="tts">🎙️ Generate Audio</div>
+            <div class="phase-item" data-phase="image">🖼️ Ambil Gambar</div>
+            <div class="phase-item" data-phase="render">🎬 Render Video</div>
+            <div class="phase-item" data-phase="bgm">🎵 Mix Musik</div>
+            <div class="phase-item" data-phase="thumbnail">🖼️ Thumbnail</div>
+            <div class="phase-item" data-phase="done">✅ Selesai</div>
+        </div>
+        <p class="progress-note">Durasi proses tergantung jumlah slide dan mode video.</p>
+    </div>
+</div>

@@ -1,6 +1,23 @@
 require('dotenv').config();
 
 const express = require('express');
+
+// Centralized Error Reporting - Placeholder for external integration
+function reportError(error, context = {}) {
+    const timestamp = new Date().toISOString();
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : 'No stack available';
+
+    // Log to console (already handled by overridden console.error)
+    console.error(`[Centralized Error] ${errorMessage}`, { context, timestamp, stack: errorStack });
+
+    // TODO: Integrate with external error tracking services like Sentry, Bugsnag, etc.
+    // Example:
+    // if (process.env.SENTRY_DSN) {
+    //     Sentry.captureException(error, { extra: { context, timestamp } });
+    // }
+}
+
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
@@ -448,6 +465,7 @@ app.post('/api/generate', upload.any(), async (req, res) => {
 
         // Generate Video
         const jobId = uuidv4();
+        req._jobId = jobId; // simpan untuk error handler
         const outputPath = path.join('./output', `video_${jobId}.mp4`);
 
         // Setup progress tracking for SSE
@@ -456,8 +474,11 @@ app.post('/api/generate', upload.any(), async (req, res) => {
         res.setHeader('X-Job-Id', jobId);
 
         emitJobProgress(jobId, 'starting', 2, 'Memulai proses render...');
+        emitJobProgress(jobId, 'image', 10, 'Mempersiapkan gambar...');
+        emitJobProgress(jobId, 'render', 20, 'Rendering video... (ini mungkin memakan waktu)');
         await generateVideo(config, outputPath, jobId);
-        emitJobProgress(jobId, 'thumbnail', 90, 'Membuat thumbnail...');
+        emitJobProgress(jobId, 'render', 85, 'Rendering video selesai.');
+        emitJobProgress(jobId, 'thumbnail', 88, 'Membuat thumbnail...');
 
         // Auto-thumbnail (portrait for 9:16, landscape otherwise)
         let thumbnailUrl = null;
@@ -502,6 +523,10 @@ app.post('/api/generate', upload.any(), async (req, res) => {
 
     } catch (error) {
         console.error("Error generating video:", error);
+        // Kirim error ke SSE agar UI tahu ada masalah
+        if (error && typeof emitJobProgress === 'function') {
+            try { emitJobProgress(req._jobId, 'error', 100, `❌ Gagal: ${error.message}`); } catch(_) {}
+        }
         res.status(500).json({ error: error.message });
     }
 });

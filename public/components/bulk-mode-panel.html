@@ -1,0 +1,39 @@
+<!-- ===== BULK MODE ===== -->
+<div class="glass-panel automation-panel bulk-panel">
+    <div class="panel-heading">
+        <div>
+            <h2>🚀 100% Otomatis (Bulk Mode)</h2>
+            <p>Generate banyak video sekaligus, jadwalkan, dan upload otomatis ke semua platform.</p>
+        </div>
+    </div>
+
+    <div class="bulk-grid">
+        <div class="form-group">
+            <label for="bulk_topic">Tema Utama</label>
+            <input type="text" id="bulk_topic" placeholder="Contoh: Fakta Unik Sejarah, Tips Hidup Sehat, Kisah Sahabat Nabi...">
+        </div>
+        <div class="form-group">
+            <label for="bulk_count">Jumlah Video</label>
+            <select id="bulk_count">
+                <option value="1">1 Video</option>
+                <option value="3">3 Video</option>
+                <option value="6" selected>6 Video</option>
+                <option value="10">10 Video</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="bulk-actions">
+        <button type="button" id="btn-bulk-generate-titles" class="btn-primary">Step 1: Generate Judul Terbaik (AI)</button>
+        <button type="button" id="btn-bulk-add-manual" class="btn-secondary" style="flex: 0.5;">+ Tambah Manual</button>
+    </div>
+
+    <div id="bulk-title-list" class="bulk-title-list" style="display: none; margin-top: 20px;">
+        <h3>Step 2: Tentukan Jadwal Publikasi</h3>
+        <p style="font-size: 0.85rem; opacity: 0.7; margin-bottom: 15px;">Sesuaikan judul dan atur waktu kapan video ini akan tampil di YouTube.</p>
+        <div id="bulk-items-container"></div>
+        <div class="bulk-final-actions" style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+            <button type="button" id="btn-bulk-process-all" class="btn-primary" style="width: 100%; font-size: 1.1rem; padding: 15px;">Step 3: PROSES SEMUA VIDEO &amp; UPLOAD</button>
+        </div>
+    </div>
+</div><script type="module" src="js/bulkModePanel.js"></script>

@@ -215,29 +215,26 @@ function buildDrawtextFilters(chunkTimings, opts = {}) {
             `enable='between(t\\,${st}\\,${en})'`
         ].join(':'));
 
-        // Accent overlay: KEY word drawn in yellow, positioned to overlay the base.
-        // We stack it on top in the same enable window — simpler than partial highlights
-        // and still looks "pro".
-        if (c.words && c.words.length > 1) {
-            const keyWord = sanitizeDrawtext(c.words[c.keyIndex].toUpperCase());
-            // Place the keyword inline by offsetting — approximation using a fresh drawtext
-            // that shows ONLY the keyword in accent, slightly scaled up for pop.
-            const accentFs = Math.round(fs * 1.12);
-            filters.push([
-                `drawtext=fontfile='${fontPath}'`,
-                `text='${keyWord}'`,
-                `fontcolor=${accentColor}`,
-                `fontsize=${accentFs}`,
-                `borderw=${Math.max(5, Math.round(accentFs * 0.09))}`,
-                `bordercolor=black`,
-                `shadowcolor=black@0.7`,
-                `shadowx=3:shadowy=5`,
-                `x=(w-text_w)/2`,
-                // Place accent slightly ABOVE the base chunk for a stacked, emphasized look
-                `y=${y}-${Math.round(fs * 1.3)}`,
-                `enable='between(t\\,${st}\\,${en})'`
-            ].join(':'));
-        }
+        // COMMENTED OUT: Accent overlay (yellow text) removed as per user request.
+        // This block was responsible for drawing the "key word" in yellow,
+        // which caused a double-caption effect and was not desired.
+        // if (c.words && c.words.length > 1) {
+        //     const keyWord = sanitizeDrawtext(c.words[c.keyIndex].toUpperCase());
+        //     const accentFs = Math.round(fs * 1.12);
+        //     filters.push([
+        //         `drawtext=fontfile='${fontPath}'`,
+        //         `text='${keyWord}'`,
+        //         `fontcolor=${accentColor}`,
+        //         `fontsize=${accentFs}`,
+        //         `borderw=${Math.max(5, Math.round(accentFs * 0.09))}`,
+        //         `bordercolor=black`,
+        //         `shadowcolor=black@0.7`,
+        //         `shadowx=3:shadowy=5`,
+        //         `x=(w-text_w)/2`,
+        //         `y=${y}-${Math.round(fs * 1.3)}`,
+        //         `enable='between(t\\,${st}\\,${en})'`
+        //     ].join(':'));
+        // }
     });
 
     return filters;

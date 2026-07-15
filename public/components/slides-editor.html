@@ -1,0 +1,62 @@
+<!-- ===== SLIDES CONTAINER ===== -->
+<div class="slides-container" id="slides-container">
+    <div class="glass-panel slide-item" data-index="0">
+        <div class="slide-header">
+            <h3>Slide 1</h3>
+            <button type="button" class="btn-icon delete-slide" disabled>&times;</button>
+        </div>
+        <div class="form-group">
+            <label>Narration Text &amp; Subtitles</label>
+            <textarea name="slide_text_0" placeholder="Type the text you want the AI voice to speak..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>Background Image</label>
+            <div class="image-source-tabs">
+                <label class="tab-option active">
+                    <input type="radio" name="slide_imgsrc_0" value="auto" checked>
+                    <span>🔍 Auto (Pexels)</span>
+                </label>
+                <label class="tab-option">
+                    <input type="radio" name="slide_imgsrc_0" value="upload">
+                    <span>📁 Upload</span>
+                </label>
+                <label class="tab-option">
+                    <input type="radio" name="slide_imgsrc_0" value="url">
+                    <span>🔗 URL</span>
+                </label>
+                <label class="tab-option">
+                    <input type="radio" name="slide_imgsrc_0" value="ref">
+                    <span>🖇️ Same as...</span>
+                </label>
+            </div>
+            <div class="image-input-area" data-mode="auto">
+                <div class="auto-search-info">
+                    <small>✨ Gambar otomatis dicari dari <strong>Pexels</strong> berdasarkan teks narasi — relevan dan berkualitas tinggi.</small>
+                </div>
+                <div class="upload-area" style="display:none;">
+                    <input type="file" name="slide_img_0" accept="image/*">
+                </div>
+                <div class="url-area" style="display:none;">
+                    <input type="url" name="slide_url_0" placeholder="https://domain.com/image.jpg">
+                </div>
+                <div class="ref-area" style="display:none;">
+                    <select name="slide_ref_0" class="ref-select">
+                        <option value="">-- Pilih Slide --</option>
+                    </select>
+                    <small>🖇️ Gambar yang sama, efek gerak berbeda agar tetap dinamis.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="actions">
+    <div class="add-slide-group">
+        <input type="number" id="slide-count-input" min="1" max="60" value="1" placeholder="1">
+        <button type="button" id="btn-add-slide" class="btn-secondary">+ Add Slides</button>
+    </div>
+    <button type="submit" id="btn-generate" class="btn-primary">
+        <span class="btn-text">🎬 Generate Video</span>
+        <div class="spinner" style="display: none;"></div>
+    </button>
+</div><script type="module" src="js/slidesEditor.js"></script>

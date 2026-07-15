@@ -1,0 +1,18 @@
+<!-- AI Terminal Console -->
+<div class="log-console-container card" style="margin-top: 30px; border-color: #6366f1;">
+    <div class="card-header" style="padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; background: rgba(99, 102, 241, 0.1);">
+        <h3 style="margin: 0; font-size: 1.1rem; color: #a5b4fc;">🤖 AI Master Control Console</h3>
+        <span id="log-status" style="font-size: 0.8rem; opacity: 0.7;">Ready</span>
+    </div>
+    <div id="log-console" style="height: 350px; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.5); font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.6; scroll-behavior: smooth;">
+        <div style="color: #6366f1;">System: AI Master Control initialized.</div>
+        <div style="color: #a5b4fc; margin-top: 5px;">Ketik perintah Anda di bawah...</div>
+    </div>
+    <div class="terminal-input-wrapper" style="padding: 10px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px;">
+        <span style="color: #6366f1; font-weight: bold; padding-top: 8px;">></span>
+        <input type="text" id="terminal-input" placeholder="Contoh: Buat 6 video tentang fakta unik hewan..." style="background: transparent; border: none; flex: 1; color: #fff; font-family: 'JetBrains Mono', monospace; outline: none; box-shadow: none;">
+        <button type="button" id="btn-send-command" class="btn-primary" style="padding: 5px 15px; font-size: 0.8rem;">SEND</button>
+    </div>
+</div>
+
+<script type="module" src="js/aiConsole.js"></script>

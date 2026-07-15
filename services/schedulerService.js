@@ -55,6 +55,32 @@ class SchedulerService {
     }
 
     /**
+     * Clean up old files in specified directories.
+     * @param {string[]} dirs - Directories to clean.
+     * @param {number} maxAgeHours - Files older than this will be deleted.
+     */
+    cleanupOldFiles(dirs, maxAgeHours = 7 * 24) { // Default: 7 days
+        const cutoff = Date.now() - (maxAgeHours * 60 * 60 * 1000);
+        dirs.forEach(dir => {
+            const absoluteDirPath = path.join(__dirname, '..', dir);
+            if (!fs.existsSync(absoluteDirPath)) return;
+
+            fs.readdirSync(absoluteDirPath).forEach(file => {
+                const filePath = path.join(absoluteDirPath, file);
+                try {
+                    const stats = fs.statSync(filePath);
+                    if (stats.isFile() && stats.mtimeMs < cutoff) {
+                        fs.unlinkSync(filePath);
+                        console.log(`🗑️ Deleted old file: ${filePath}`);
+                    }
+                } catch (e) {
+                    console.error(`Error deleting file ${filePath}:`, e.message);
+                }
+            });
+        });
+    }
+
+    /**
      * Start the scheduler
      */
     start() {

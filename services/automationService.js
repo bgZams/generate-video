@@ -1,6 +1,32 @@
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
+
+/**
+ * Utility function to retry an async operation with exponential backoff.
+ * @param {Function} fn - The async function to retry.
+ * @param {Object} options - Retry options.
+ * @param {number} options.retries - Max number of retries (default 3).
+ * @param {number} options.delay - Initial delay in ms (default 1000).
+ * @param {string} options.name - Name of the operation for logging.
+ */
+async function withRetry(fn, { retries = 3, delay = 1000, name = 'operation' } = {}) {
+    let attempt = 0;
+    while (attempt <= retries) {
+        try {
+            return await fn();
+        } catch (error) {
+            attempt++;
+            if (attempt > retries) {
+                console.error(`❌ ${name} failed after ${retries + 1} attempts:`, error.message);
+                throw error;
+            }
+            const sleepTime = delay * Math.pow(2, attempt - 1);
+            console.warn(`⚠️ ${name} failed (attempt ${attempt}/${retries + 1}). Retrying in ${sleepTime}ms...`);
+            await new Promise(res => setTimeout(res, sleepTime));
+        }
+    }
+}
 const { generateVideo } = require('./videoGenerator');
 const { generateIdeas, generateIdeasFor, DEFAULT_MODEL, VIDEO_MODE_PRESETS, saveUsedTitle } = require('./narration_service');
 const { generateNarrationAudio, saveAudioFile } = require('./ttsService');
@@ -11,6 +37,32 @@ const facebookService = require('./facebookService');
 const tiktokService = require('./tiktokService');
 const { generateThumbnail } = require('./thumbnailService');
 const edgeTts = require('./edgeTtsService');
+
+/**
+ * Utility function to retry an async operation with exponential backoff.
+ * @param {Function} fn - The async function to retry.
+ * @param {Object} options - Retry options.
+ * @param {number} options.retries - Max number of retries (default 3).
+ * @param {number} options.delay - Initial delay in ms (default 1000).
+ * @param {string} options.name - Name of the operation for logging.
+ */
+async function withRetry(fn, { retries = 3, delay = 1000, name = 'operation' } = {}) {
+    let attempt = 0;
+    while (attempt <= retries) {
+        try {
+            return await fn();
+        } catch (error) {
+            attempt++;
+            if (attempt > retries) {
+                console.error(`❌ ${name} failed after ${retries + 1} attempts:`, error.message);
+                throw error;
+            }
+            const sleepTime = delay * Math.pow(2, attempt - 1);
+            console.warn(`⚠️ ${name} failed (attempt ${attempt}/${retries + 1}). Retrying in ${sleepTime}ms...`);
+            await new Promise(res => setTimeout(res, sleepTime));
+        }
+    }
+}
 
 // --- Randomization helpers (anti "templated content" flag) ------------------
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
@@ -78,7 +130,7 @@ class AutomationService {
         const defaultModels = {
             gemini: DEFAULT_MODEL,
             openai: 'gpt-4o-mini',
-            claude: 'claude-sonnet-4-5'
+            claude: 'claude-opus-4-8'
         };
         const model = options.model || defaultModels[provider] || DEFAULT_MODEL;
         return { provider, apiKey, model };
@@ -95,8 +147,11 @@ class AutomationService {
         }
 
         const jobId = uuidv4();
+        // Emit initial progress for UI
+        global.emitJobProgress(jobId, 'starting', 5, 'Memulai proses otomatisasi...');
         console.log(`\n🌟 Starting Full Automation Workflow (JobID: ${jobId})`);
         this.isProcessing = true;
+            global.emitJobProgress(jobId, 'starting', 3, 'Menyiapkan workflow...');
 
         try {
             // Resolve videoMode and its preset config
@@ -135,20 +190,23 @@ class AutomationService {
             if (options.preDefinedIdea && options.preDefinedIdea.narrationSegments) {
                 console.log('🤖 Using pre-defined idea from Bulk UI');
                 idea = options.preDefinedIdea;
+                global.emitJobProgress(jobId, 'idea', 9, 'Ide narasi siap.');
             } else {
                 console.log(`🤖 Using AI provider: ${ai.provider} (model: ${ai.model})`);
-                const ideas = await generateIdeasFor(ai.provider, ai.apiKey, {
+                const ideas = await withRetry(() => generateIdeasFor(ai.provider, ai.apiKey, {
                     topic,
                     slideCount: slideCountForIdea,
                     count: 1,
                     model: ai.model,
                     videoMode
-                });
+                }), { name: 'AI Ideas Generation' });
 
                 if (!ideas || !ideas.ideas || ideas.ideas.length === 0) {
                     throw new Error('Failed to generate narration ideas');
                 }
                 idea = ideas.ideas[0];
+                global.emitJobProgress(jobId, 'idea', 9, 'Ide narasi siap.');
+                global.emitJobProgress(jobId, 'idea', 15, 'Ide narasi berhasil dibuat.');
             }
 
             const title = idea.title;
@@ -162,17 +220,22 @@ class AutomationService {
             // tidak identik antar video.
             const speedJitter = +(0.95 + Math.random() * 0.1).toFixed(2);
             console.log(`🎙️ Step 2: Generating high-quality narration audio (voice=${voice}, speed=${speedJitter})...`);
+            global.emitJobProgress(jobId, 'tts', 12, 'Mempersiapkan audio narasi...');
             const segmentAudioPaths = [];
             for (let i = 0; i < Math.min(segments.length, slideCountForIdea); i++) {
                 try {
-                    const audioBuffer = await generateNarrationAudio(segments[i], voice, speedJitter, this.apiKey);
+                    const audioBuffer = await withRetry(() => generateNarrationAudio(segments[i], voice, speedJitter, this.apiKey), { name: `TTS Generation for segment ${i + 1}` });
                     const audioFilename = `auto_audio_${jobId}_${i}`;
                     const audioPath = await saveAudioFile(audioBuffer, audioFilename);
                     segmentAudioPaths.push(audioPath);
                     console.log(`   ✅ Segment ${i+1}/${segments.length} audio ready`);
+                    global.emitJobProgress(jobId, 'tts', 12 + Math.round(((i+1)*14)/segments.length), `TTS ${i+1}/${segments.length}`);
                 } catch (err) {
                     console.error(`   ⚠️ Failed to generate audio for segment ${i+1}:`, err.message);
                     segmentAudioPaths.push(null); // Fallback to auto-TTS in generator if needed
+                    // Lanjutkan ke segmen berikutnya walau gagal, tapi laporkan error
+                    // Kita akan hitung total progres TTS berdasarkan jumlah segmen yg *coba* diproses
+                    global.emitJobProgress(jobId, 'tts', 12 + Math.round(((i+1)*14)/segments.length), `Audio error ${i+1}: ${err.message}`);
                 }
             }
 
@@ -181,11 +244,13 @@ class AutomationService {
             if (!localBgmPath) {
                 console.log('🎵 Step 3: Getting BGM...');
                 const selectedMood = bgmMood || analyzeMoodFromText(fullText);
-                const musicInfo = await getMusicByMood(selectedMood, title, path.join(__dirname, '../output'));
+                const musicInfo = await withRetry(() => getMusicByMood(selectedMood, title, path.join(__dirname, '../output')), { name: 'BGM Selection' });
                 localBgmPath = musicInfo.path || null;
                 console.log(`   ✅ Mood: ${selectedMood}, BGM: ${musicInfo.title || 'None'}`);
+                global.emitJobProgress(jobId, 'bgm', 33, `BGM siap: ${musicInfo.title || 'None'}`);
             } else {
                 console.log(`🎵 Step 3: Using manual BGM path: ${localBgmPath}`);
+                global.emitJobProgress(jobId, 'bgm', 33, 'Menggunakan BGM manual');
             }
 
             // 4. Generate YouTube Metadata (uses the SAME provider as ideas)
@@ -200,7 +265,7 @@ class AutomationService {
                 };
             } else {
                 console.log(`📊 Step 4: Generating SEO metadata via ${ai.provider}...`);
-                metadata = await generateYouTubeMetadata({
+                metadata = await withRetry(() => generateYouTubeMetadata({
                     title,
                     topic,
                     summary: title,
@@ -209,12 +274,14 @@ class AutomationService {
                     apiKey: ai.apiKey,
                     provider: ai.provider,
                     model: ai.model
-                });
+                }), { name: 'YouTube Metadata Generation' });
             }
             console.log('   ✅ Metadata generated.');
+            global.emitJobProgress(jobId, 'metadata', 44, 'Metadata video selesai.');
 
             // 5. Prepare Video Config with RANDOMIZED grouping (anti templated-flag)
             console.log('🎬 Step 5: Rendering video with randomized image grouping...');
+            global.emitJobProgress(jobId, 'render', 50, 'Mempersiapkan render video...');
             const usableSegments = segments.slice(0, slideCountForIdea);
             const refMap = buildRandomGroups(usableSegments.length);
 
@@ -271,11 +338,14 @@ class AutomationService {
             console.log(`   🎨 Variations -> groups=${new Set(refMap.map((v,i)=>v??i)).size}, chunk=${captionChunkSize}, accent=${captionAccent}`);
 
             const outputPath = path.join(__dirname, '../output', `auto_video_${jobId}.mp4`);
+            global.emitJobProgress(jobId, 'render', 55, 'Rendering video... (ini mungkin memakan waktu)');
             await generateVideo(videoConfig, outputPath, jobId);
             console.log(`   ✅ Video rendered: ${outputPath}`);
+            global.emitJobProgress(jobId, 'render', 80, 'Rendering video selesai.');
 
             // 5b. Auto-generate thumbnail (portrait for Shorts)
             console.log('🖼️ Step 5b: Generating thumbnail...');
+            global.emitJobProgress(jobId, 'thumbnail', 85, 'Membuat thumbnail...');
             let thumbnailPath = null;
             try {
                 thumbnailPath = path.join(__dirname, '../output', `auto_thumb_${jobId}.png`);
@@ -284,12 +354,12 @@ class AutomationService {
                     outputPath: thumbnailPath,
                     title: metadata.titles?.variations?.[0] || title,
                     orientation: resolution === '16:9' ? 'landscape' : 'portrait'
-                    // grabTime & palette dibiarkan default = RANDOM
-                    // supaya tiap thumbnail tampil beda (warna & frame-start).
                 });
+                global.emitJobProgress(jobId, 'thumbnail', 90, 'Thumbnail selesai.');
             } catch (thumbErr) {
                 console.warn(`   ⚠️ Thumbnail generation failed: ${thumbErr.message}`);
                 thumbnailPath = null;
+                global.emitJobProgress(jobId, 'thumbnail', 90, `Thumbnail gagal: ${thumbErr.message}`);
             }
 
             // 6. Save to History
@@ -308,8 +378,9 @@ class AutomationService {
             let youtubeResult = null;
             if (wantYouTube && youtubeService.isAuthenticated()) {
                 console.log('🚀 Step 6a: Uploading to YouTube...');
+                global.emitJobProgress(jobId, 'upload', 91, 'Upload ke YouTube...');
                 try {
-                    youtubeResult = await youtubeService.uploadVideo({
+                    youtubeResult = await withRetry(() => youtubeService.uploadVideo({
                         path: outputPath,
                         title: finalTitle,
                         description: metadata.description,
@@ -317,10 +388,12 @@ class AutomationService {
                         privacyStatus: privacyStatus,
                         publishAt: publishAt,
                         thumbnailPath
-                    });
+                    }), { name: 'YouTube Upload' });
                     console.log('   ✅ YouTube Upload Complete!');
+                    global.emitJobProgress(jobId, 'upload', 93, 'Upload YouTube selesai.');
                 } catch (uploadError) {
                     console.error('   ❌ YouTube Upload Failed:', uploadError.message);
+                    global.emitJobProgress(jobId, 'upload', 93, `YouTube gagal: ${uploadError.message}`);
                     youtubeResult = {
                         success: false,
                         error: uploadError.message,
@@ -335,16 +408,19 @@ class AutomationService {
             let facebookResult = null;
             if (wantFacebook && facebookService.isAuthenticated()) {
                 console.log('🚀 Step 6b: Uploading to Facebook Reels...');
+                global.emitJobProgress(jobId, 'upload', 94, 'Upload ke Facebook...');
                 try {
-                    facebookResult = await facebookService.uploadVideo({
+                    facebookResult = await withRetry(() => facebookService.uploadVideo({
                         path: outputPath,
                         title: finalTitle,
                         description: metadata.description,
                         asReel: true
-                    });
+                    }), { name: 'Facebook Upload' });
                     console.log('   ✅ Facebook Upload Complete!');
+                    global.emitJobProgress(jobId, 'upload', 96, 'Upload Facebook selesai.');
                 } catch (err) {
                     console.error('   ❌ Facebook Upload Failed:', err.response?.data || err.message);
+                    global.emitJobProgress(jobId, 'upload', 96, `Facebook gagal: ${err.message}`);
                     facebookResult = { success: false, error: err.message };
                 }
             } else if (wantFacebook) {
@@ -355,15 +431,18 @@ class AutomationService {
             let tiktokResult = null;
             if (wantTiktok && tiktokService.isAuthenticated()) {
                 console.log('🚀 Step 6c: Uploading to TikTok...');
+                global.emitJobProgress(jobId, 'upload', 97, 'Upload ke TikTok...');
                 try {
-                    tiktokResult = await tiktokService.uploadVideo({
+                    tiktokResult = await withRetry(() => tiktokService.uploadVideo({
                         path: outputPath,
                         title: finalTitle,
                         description: metadata.description
-                    });
+                    }), { name: 'TikTok Upload' });
                     console.log('   ✅ TikTok Upload Complete!');
+                    global.emitJobProgress(jobId, 'upload', 99, 'Upload TikTok selesai.');
                 } catch (err) {
                     console.error('   ❌ TikTok Upload Failed:', err.response?.data || err.message);
+                    global.emitJobProgress(jobId, 'upload', 99, `TikTok gagal: ${err.message}`);
                     tiktokResult = { success: false, error: err.message };
                 }
             } else if (wantTiktok) {
@@ -371,6 +450,7 @@ class AutomationService {
             }
 
             console.log(`✨ Workflow Complete (JobID: ${jobId})\n`);
+            global.emitJobProgress(jobId, 'done', 100, '✅ Workflow selesai! Video siap.');
 
             return {
                 success: true,
@@ -386,6 +466,7 @@ class AutomationService {
 
         } catch (error) {
             console.error(`❌ Automation Workflow Failed (JobID: ${jobId}):`, error.message);
+            global.emitJobProgress(jobId, 'error', 100, `❌ Gagal: ${error.message}`);
             return { success: false, error: error.message };
         } finally {
             this.isProcessing = false;

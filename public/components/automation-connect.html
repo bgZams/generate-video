@@ -1,0 +1,114 @@
+<!-- ===== AUTOMATION & SOCIAL PANEL ===== -->
+<div class="glass-panel automation-panel">
+    <div class="panel-heading">
+        <div>
+            <h2>🔗 Automation &amp; Platform Connect</h2>
+            <p>Atur jadwal otomatis dan hubungkan ke YouTube, Facebook, TikTok.</p>
+        </div>
+    </div>
+
+    <div class="automation-grid">
+        <div class="form-group">
+            <label>Status Scheduler</label>
+            <div class="status-badge-group">
+                <span id="scheduler-status-badge" class="badge badge-off">OFF</span>
+                <button type="button" id="btn-toggle-scheduler" class="btn-secondary compact-btn">Enable Scheduler</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>YouTube</label>
+            <div class="status-badge-group">
+                <span id="youtube-status-badge" class="badge badge-off">DISCONNECTED</span>
+                <button type="button" id="btn-connect-youtube" class="btn-secondary compact-btn">Connect</button>
+                <button type="button" id="btn-disconnect-youtube" class="btn-danger compact-btn" style="display: none;">Disconnect</button>
+            </div>
+            <div id="youtube-channel-info" style="margin-top: 10px; font-size: 0.85rem; color: #a5b4fc; display: none; align-items: center; gap: 8px;">
+                📺 <span id="youtube-channel-name"></span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Facebook Page</label>
+            <div class="status-badge-group">
+                <span id="facebook-status-badge" class="badge badge-off">DISCONNECTED</span>
+                <button type="button" id="btn-connect-facebook" class="btn-secondary compact-btn">Connect</button>
+                <button type="button" id="btn-disconnect-facebook" class="btn-danger compact-btn" style="display: none;">Disconnect</button>
+            </div>
+            <div id="facebook-page-info" style="margin-top: 10px; font-size: 0.85rem; color: #a5b4fc; display: none;">
+                📘 <span id="facebook-page-name"></span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>TikTok</label>
+            <div class="status-badge-group">
+                <span id="tiktok-status-badge" class="badge badge-off">DISCONNECTED</span>
+                <button type="button" id="btn-connect-tiktok" class="btn-secondary compact-btn">Connect</button>
+                <button type="button" id="btn-disconnect-tiktok" class="btn-danger compact-btn" style="display: none;">Disconnect</button>
+            </div>
+            <div id="tiktok-user-info" style="margin-top: 10px; font-size: 0.85rem; color: #a5b4fc; display: none;">
+                🎵 <span id="tiktok-user-name"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="scheduler-settings" style="margin-top: 10px;">
+        <div class="form-group">
+            <label>Platform Upload Targets</label>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <label class="checkbox-label"><input type="checkbox" id="target-youtube" checked><span>YouTube</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="target-facebook" checked><span>Facebook Reels</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="target-tiktok" checked><span>TikTok</span></label>
+            </div>
+        </div>
+    </div>
+
+    <div class="scheduler-settings">
+        <div class="form-group">
+            <label for="scheduler-topic">Tema Otomatis</label>
+            <input type="text" id="scheduler-topic" placeholder="Contoh: Fakta Unik Dunia">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="scheduler-effect">Visual Effect</label>
+                <select id="scheduler-effect">
+                    <option value="none">✨ None</option>
+                    <option value="cinematic">🎬 Cinematic</option>
+                    <option value="retro">📻 Retro</option>
+                    <option value="vibrant">🌈 Vibrant</option>
+                    <option value="warm">☀️ Warm</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label" style="margin-top: 32px;">
+                    <input type="checkbox" id="scheduler-vignette">
+                    <span>Add Vignette</span>
+                </label>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="scheduler-cron">Jadwal (Cron Format)</label>
+                <input type="text" id="scheduler-cron" placeholder="0 9 * * * (Setiap jam 9 pagi)">
+            </div>
+            <div class="form-group">
+                <label for="scheduler-privacy">Privasi YouTube</label>
+                <select id="scheduler-privacy">
+                    <option value="private">Private</option>
+                    <option value="unlisted">Unlisted</option>
+                    <option value="public">Public</option>
+                </select>
+            </div>
+        </div>
+        <div class="scheduler-actions">
+            <button type="button" id="btn-save-scheduler" class="btn-primary">💾 Simpan Pengaturan Jadwal</button>
+            <hr class="divider">
+            <div class="run-now-group">
+                <div class="form-group compact">
+                    <label for="manual-schedule-time">Jadwalkan Publikasi (Opsional)</label>
+                    <input type="datetime-local" id="manual-schedule-time">
+                    <small>Kosongkan untuk upload langsung.</small>
+                </div>
+                <button type="button" id="btn-run-now" class="btn-secondary">▶ Run Automation Now</button>
+            </div>
+        </div>
+    </div>
+</div><script type="module" src="js/automationConnect.js"></script>

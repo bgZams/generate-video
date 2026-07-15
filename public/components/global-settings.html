@@ -1,0 +1,240 @@
+<!-- ===== GLOBAL SETTINGS ===== -->
+<div class="glass-panel settings-panel">
+    <h2>⚙️ Global Settings</h2>
+
+    <div class="form-group">
+        <label for="story_title">Judul Video</label>
+        <input type="text" id="story_title" name="story_title" placeholder="Terisi otomatis dari AI, atau isi manual.">
+        <small>Judul disimpan ke histori agar tema yang sudah dipakai tidak terulang.</small>
+    </div>
+
+    <div class="form-group">
+        <label for="ai_provider">AI Provider</label>
+        <select id="ai_provider">
+            <option value="claude" selected>🧠 Claude (Premium &amp; Stabil)</option>
+            <option value="gemini">🤖 Gemini (Gratis, cepat limit)</option>
+            <option value="openai">💬 ChatGPT (OpenAI)</option>
+        </select>
+        <small>Claude direkomendasikan untuk narasi panjang berkualitas tinggi.</small>
+    </div>
+
+    <!-- Claude Config -->
+    <div class="provider-config" data-provider="claude" style="margin-bottom:1.25rem;">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="claude_api_key">Claude API Key</label>
+                <div style="display:flex; gap:6px;">
+                    <input type="password" id="claude_api_key" placeholder="sk-ant-..." style="flex:1;" autocomplete="off">
+                    <button type="button" class="btn-secondary compact-btn toggle-key" data-target="claude_api_key">👁️</button>
+                </div>
+                <small><span id="claude_key_status" style="opacity:0.7;">Belum tersimpan.</span></small>
+            </div>
+            <div class="form-group">
+                <label for="claude_model">Claude Model</label>
+                <select id="claude_model">
+                    <option value="claude-opus-4-8" selected>Claude Opus 4.8 (Terkuat untuk narasi panjang)</option>
+                    <option value="claude-fable-5">Claude Fable 5 (Paling capable)</option>
+                    <option value="claude-sonnet-5">Claude Sonnet 5 (Balanced terbaru)</option>
+                    <option value="claude-haiku-4-5">Claude Haiku 4.5 (Cepat & hemat)</option>
+                    <option value="claude-opus-4-7">Claude Opus 4.7</option>
+                    <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                    <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                    <option value="claude-opus-4-5">Claude Opus 4.5</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gemini Config -->
+    <div class="provider-config" data-provider="gemini" style="display:none; margin-bottom:1.25rem;">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="gemini_api_key">Gemini API Key</label>
+                <div style="display:flex; gap:6px;">
+                    <input type="password" id="gemini_api_key" placeholder="AIza..." style="flex:1;" autocomplete="off">
+                    <button type="button" class="btn-secondary compact-btn toggle-key" data-target="gemini_api_key">👁️</button>
+                </div>
+                <small><span id="gemini_key_status" style="opacity:0.7;">Belum tersimpan.</span></small>
+            </div>
+            <div class="form-group">
+                <label for="gemini_model">Gemini Model</label>
+                <select id="gemini_model">
+                    <option value="gemini-flash-latest" selected>gemini-flash-latest (Default cepat)</option>
+                    <option value="gemini-2.5-pro">gemini-2.5-pro (Terkuat)</option>
+                    <option value="gemini-2.5-flash">gemini-2.5-flash (Balanced)</option>
+                    <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (Hemat)</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                    <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                    <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- OpenAI Config -->
+    <div class="provider-config" data-provider="openai" style="display:none; margin-bottom:1.25rem;">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="openai_api_key">OpenAI API Key</label>
+                <div style="display:flex; gap:6px;">
+                    <input type="password" id="openai_api_key" placeholder="sk-..." style="flex:1;" autocomplete="off">
+                    <button type="button" class="btn-secondary compact-btn toggle-key" data-target="openai_api_key">👁️</button>
+                </div>
+                <small><span id="openai_key_status" style="opacity:0.7;">Belum tersimpan.</span></small>
+            </div>
+            <div class="form-group">
+                <label for="openai_model_pick">OpenAI Model</label>
+                <select id="openai_model_pick">
+                    <option value="gpt-4o-mini" selected>gpt-4o-mini (Hemat)</option>
+                    <option value="gpt-4.1">gpt-4.1</option>
+                    <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                    <option value="gpt-4.1-nano">gpt-4.1-nano</option>
+                    <option value="gpt-4o">gpt-4o (Flagship)</option>
+                    <option value="gpt-4o-mini-search-preview">gpt-4o-mini-search-preview</option>
+                    <option value="o3">o3 (Reasoning)</option>
+                    <option value="o3-mini">o3-mini (Reasoning hemat)</option>
+                    <option value="o4-mini">o4-mini (Reasoning cepat)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:1.5rem;">
+        <button type="button" id="btn-clear-keys" class="btn-secondary compact-btn">🗑️ Hapus Token</button>
+        <span id="keys-status" class="status-text" style="opacity:0.75; margin-left:12px;"></span>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="resolution">Resolusi Video</label>
+            <select id="resolution" name="resolution">
+                <option value="9:16">Portrait 9:16 (Shorts / TikTok)</option>
+                <option value="16:9">Landscape 16:9 (YouTube)</option>
+                <option value="1:1">Square 1:1 (Instagram)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="narrator_voice">Suara Narator</label>
+            <select id="narrator_voice" name="narrator_voice">
+                <option value="edge-id-gadis" selected>🇮🇩 Gadis (Edge TTS — Wanita, Natural)</option>
+                <option value="edge-id-ardi">🇮🇩 Ardi (Edge TTS — Pria, Hangat)</option>
+                <option value="nova">✨ Nova (Premium OpenAI)</option>
+                <option value="shimmer">🎀 Shimmer (Premium OpenAI)</option>
+                <option value="alloy">🎤 Alloy (Premium OpenAI)</option>
+                <option value="onyx">🎺 Onyx (Premium OpenAI)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="narrator_speed">Kecepatan Bicara</label>
+            <select id="narrator_speed" name="narrator_speed">
+                <option value="0.75">🐢 Lambat (0.75x)</option>
+                <option value="0.9" selected>▶️ Alami (0.9x)</option>
+                <option value="1.0">🏃 Normal (1.0x)</option>
+                <option value="1.25">🚀 Cepat (1.25x)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="bgm_mood">Mood Musik</label>
+            <select id="bgm_mood" name="bgm_mood">
+                <option value="upbeat">🎵 Upbeat (Happy, energetic)</option>
+                <option value="calm">😌 Calm (Relaxing, peaceful)</option>
+                <option value="dramatic">🎬 Dramatic (Intense, powerful)</option>
+                <option value="cinematic">🎥 Cinematic (Epic, orchestral)</option>
+                <option value="motivational">🚀 Motivational (Inspiring, epic)</option>
+                <option value="chill">❄️ Chill (Lo-fi, ambient)</option>
+                <option value="dark">🌙 Dark (Mysterious, eerie)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="bgm_audio">Upload BGM (MP3) — Opsional</label>
+            <input type="file" id="bgm_audio" name="bgm_audio" accept="audio/mpeg">
+            <small>Biarkan kosong untuk auto-pilih musik berdasarkan mood di atas.</small>
+        </div>
+        <div class="form-group">
+            <label for="bgm_local">Library Musik Lokal</label>
+            <select id="bgm_local" name="bgm_local">
+                <option value="">-- Auto Pick (Mood-based) --</option>
+            </select>
+            <small>File dari <code>services/music/</code>. Override mood jika dipilih.</small>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="visual_effect">Visual Effect Style</label>
+            <select id="visual_effect" name="visual_effect">
+                <option value="none">✨ None (Original)</option>
+                <option value="cinematic">🎬 Cinematic (Teal &amp; Orange)</option>
+                <option value="retro">📻 Retro / VHS</option>
+                <option value="vibrant">🌈 Vibrant (High Saturation)</option>
+                <option value="warm">☀️ Warm (Golden Hour)</option>
+                <option value="cool">❄️ Cool (Blue Tint)</option>
+                <option value="grayscale">🌑 Grayscale</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label style="opacity:0">.</label>
+            <label class="checkbox-label" style="margin-top:8px;">
+                <input type="checkbox" id="vignette" name="vignette">
+                <span>Add Vignette (Dark edges)</span>
+            </label>
+        </div>
+    </div>
+
+    <h3 class="section-subtitle">🚀 Pro Enhancements</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="pro_captions" checked>
+                <span>💬 Caption Submagic-style (word-by-word)</span>
+            </label>
+        </div>
+        <div class="form-group">
+            <label for="pro_caption_chunk">Kata per chunk</label>
+            <select id="pro_caption_chunk">
+                <option value="1">1 kata (very punchy)</option>
+                <option value="2" selected>2 kata (Submagic)</option>
+                <option value="3">3 kata (lebih tenang)</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="pro_caption_accent">Warna aksen caption</label>
+            <select id="pro_caption_accent">
+                <option value="yellow" selected>🟡 Kuning (viral)</option>
+                <option value="#00E676">🟢 Hijau neon</option>
+                <option value="#FF4081">🌸 Pink</option>
+                <option value="cyan">🔵 Cyan</option>
+                <option value="white">⚪ Putih</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <div class="checkbox-row">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="pro_transitions" checked>
+                    <span>🎞️ Transisi xfade antar scene</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="pro_progress_bar" checked>
+                    <span>📊 Progress bar retensi</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="pro_auto_thumbnail" checked>
+                    <span>🖼️ Auto-thumbnail</span>
+                </label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="js/globalSettings.js"></script>
