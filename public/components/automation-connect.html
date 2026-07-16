@@ -51,8 +51,81 @@
     </div>
 
     <div class="scheduler-settings" style="margin-top: 10px;">
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label style="font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; display: block; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">📹 Video Mode</label>
+            <div class="form-row" style="gap: 15px;">
+                <style>
+                    .video-mode-card {
+                        flex: 1;
+                        background: rgba(0,0,0,0.2);
+                        border: 2px solid transparent;
+                        border-radius: 8px;
+                        padding: 15px;
+                        cursor: pointer;
+                        text-align: left;
+                        transition: all 0.3s ease;
+                        position: relative;
+                    }
+                    .video-mode-card:hover {
+                        background: rgba(0,0,0,0.3);
+                        border-color: rgba(99, 102, 241, 0.2);
+                    }
+                    .video-mode-card input[type="radio"] {
+                        position: absolute;
+                        opacity: 0;
+                        pointer-events: none;
+                    }
+                    .video-mode-card:has(input:checked) {
+                        background: rgba(99, 102, 241, 0.1);
+                        border-color: rgba(99, 102, 241, 0.8);
+                        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+                    }
+                    .mode-card-title {
+                        font-weight: bold;
+                        font-size: 1rem;
+                        color: #e0e7ff;
+                        margin-bottom: 5px;
+                        display: block;
+                    }
+                    .mode-card-title::before {
+                        content: '○';
+                        margin-right: 8px;
+                        color: #a5b4fc;
+                    }
+                    .video-mode-card:has(input:checked) .mode-card-title::before {
+                        content: '◉';
+                        color: #818cf8;
+                    }
+                    .mode-card-desc {
+                        font-size: 0.8rem;
+                        color: #9ca3af;
+                        margin: 0;
+                        line-height: 1.4;
+                    }
+                </style>
+
+                <label class="video-mode-card">
+                    <input type="radio" name="videoMode" value="short" checked>
+                    <span class="mode-card-title">Video Shorts</span>
+                    <p class="mode-card-desc">Durasi &lt; 60 Detik<br>Format Vertikal (9:16)</p>
+                </label>
+
+                <label class="video-mode-card">
+                    <input type="radio" name="videoMode" value="medium">
+                    <span class="mode-card-title">Video Standar</span>
+                    <p class="mode-card-desc">Durasi 2–5 Menit<br>Format Landscape (16:9)</p>
+                </label>
+
+                <label class="video-mode-card">
+                    <input type="radio" name="videoMode" value="long">
+                    <span class="mode-card-title">Video Panjang</span>
+                    <p class="mode-card-desc">Durasi 5–15 Menit<br>Format Landscape (16:9)</p>
+                </label>
+            </div>
+        </div>
+
         <div class="form-group">
-            <label>Platform Upload Targets</label>
+            <label style="font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; display: block; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">🎯 Platform Upload Targets</label>
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
                 <label class="checkbox-label"><input type="checkbox" id="target-youtube" checked><span>YouTube</span></label>
                 <label class="checkbox-label"><input type="checkbox" id="target-facebook" checked><span>Facebook Reels</span></label>

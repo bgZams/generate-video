@@ -14,6 +14,115 @@ document.addEventListener('DOMContentLoaded', () => {
     // Global progress SSE tracking state
     let progressSSE = null;
 
+    // =========================================================================
+    // FormStateManager — namespaced, scalable form state across components
+    // =========================================================================
+    const FormStateManager = {
+        // Namespaced store: { "global-settings": { "resolution": "16:9", ... }, ... }
+        _store: {},
+        // Tracks which component is currently rendered in the DOM
+        _active: '',
+
+        init() {
+            document.addEventListener('input', this._onInput.bind(this));
+            document.addEventListener('change', this._onInput.bind(this));
+        },
+
+        // ---- Auto-capture: delegated listener ----
+        _onInput(e) {
+            const ns = this._active;
+            if (!ns) return;                       // no component mounted yet
+
+            const el = e.target;
+            if (!(el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')) return;
+
+            const fieldId = el.id || el.name;
+            if (!fieldId) return;                   // unidentifiable element
+            if (el.type === 'file' || el.type === 'password') return;  // skip
+
+            if (!this._store[ns]) this._store[ns] = {};
+
+            // Key = componentName::fieldId  (stored under namespace object for fast lookup)
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                this._store[ns][fieldId] = { type: 'bool', value: el.checked };
+            } else {
+                this._store[ns][fieldId] = { type: 'value', value: el.value };
+            }
+        },
+
+        // ---- Public API ----
+
+        /** Snapshot every trackable input currently in the DOM into the given namespace. */
+        save(component) {
+            const container = document.getElementById('video-form') || document.getElementById('component-container');
+            if (!container) return;
+
+            if (!this._store[component]) this._store[component] = {};
+
+            container.querySelectorAll('input, select, textarea').forEach(el => {
+                const fieldId = el.id || el.name;
+                if (!fieldId) return;
+                if (el.type === 'file' || el.type === 'password') return;
+
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    this._store[component][fieldId] = { type: 'bool', value: el.checked };
+                } else {
+                    this._store[component][fieldId] = { type: 'value', value: el.value };
+                }
+            });
+        },
+
+        /**
+         * Restore saved state for a component back into the DOM.
+         * @param {string}  component         - namespace key
+         * @param {Object}  [opts]
+         * @param {boolean} [opts.notify=false] - if true, dispatch 'change' after setting each value
+         */
+        restore(component, opts) {
+            const notify = (opts && opts.notify === true);
+            const bucket = this._store[component];
+            if (!bucket) return;
+
+            Object.keys(bucket).forEach(fieldId => {
+                const el = document.getElementById(fieldId)
+                        || document.querySelector('[name="' + fieldId + '"]');
+                if (!el) return;
+
+                const entry = bucket[fieldId];
+                if (entry.type === 'bool') {
+                    el.checked = entry.value;
+                } else {
+                    el.value = entry.value;
+                }
+
+                if (notify) {
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+        },
+
+        /** Remove all saved state for a single component. */
+        clear(component) {
+            delete this._store[component];
+        },
+
+        /** Remove state for a component AND stop tracking it as active. */
+        destroy(component) {
+            delete this._store[component];
+            if (this._active === component) this._active = '';
+        },
+
+        /** Tell the manager which component is currently in the DOM. */
+        setActive(component) {
+            this._active = component;
+        }
+    };
+
+    // Boot the manager once
+    FormStateManager.init();
+    // Expose to window so component scripts can call save/restore/clear if needed
+    window.FormStateManager = FormStateManager;
+
     window.updateProgressUI = function(phase, pct, message) {
         const fillEl = document.getElementById('progress-bar-fill');
         const pctEl = document.getElementById('progress-pct');
@@ -72,6 +181,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Save state of the component that is about to be removed from the DOM
+        if (activeComponent) {
+            FormStateManager.save(activeComponent);
+        }
+
         // Clean up previous interval/listeners if any
         if (window.currentConsoleInterval) {
             clearInterval(window.currentConsoleInterval);
@@ -95,6 +209,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             activeComponent = componentName;
 
+            // Tell the state manager which component is now in the DOM
+            FormStateManager.setActive(componentName);
+
             // Execute scripts inside the template (dynamic module execution)
             const templateScripts = (form || componentContainer).querySelectorAll('script');
             templateScripts.forEach(oldScript => {
@@ -114,6 +231,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Initialize JavaScript context for components
             initializeDynamicElements();
+
+            // Restore previously saved form state after component init
+            // `notify: false` prevents infinite loops and unwanted event bubbling side effects
+            FormStateManager.restore(componentName, { notify: false });
 
             // Update Tab active style
             if (mainNavTabs) {

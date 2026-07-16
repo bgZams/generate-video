@@ -97,7 +97,8 @@ class SchedulerService {
                     voice: this.config.voice,
                     privacyStatus: this.config.privacyStatus,
                     visualEffect: this.config.visualEffect || 'none',
-                    vignette: this.config.vignette || false
+                    vignette: this.config.vignette || false,
+                    videoMode: this.config.videoMode || 'short'
                 });
             });
         } else {

@@ -1018,6 +1018,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const schedVignette = document.getElementById('scheduler-vignette');
                 if (schedEffect) schedEffect.value = config.visualEffect || 'none';
                 if (schedVignette) schedVignette.checked = !!config.vignette;
+
+                if (config.videoMode) {
+                    const modeRadio = document.querySelector(`input[name="videoMode"][value="${config.videoMode}"]`);
+                    if (modeRadio) modeRadio.checked = true;
+                }
             } else {
                 console.error('Failed to fetch scheduler status: data.success is false');
             }
@@ -1044,7 +1049,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 schedule: schedulerCronInput.value,
                 privacyStatus: schedulerPrivacySelect.value,
                 visualEffect: schedEffect ? schedEffect.value : 'none',
-                vignette: schedVignette ? schedVignette.checked : false
+                vignette: schedVignette ? schedVignette.checked : false,
+                videoMode: document.querySelector('input[name="videoMode"]:checked')?.value || 'short'
             });
             alert('Pengaturan jadwal berhasil disimpan!');
         });
@@ -1408,7 +1414,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     publishAt: time ? new Date(time).toISOString() : null,
                     topic: bulkTopicInput.value || idea.topic || 'Custom Video',
                     ideaId: idea.id,
-                    narrationSegments: idea.narrationSegments
+                    narrationSegments: idea.narrationSegments,
+                    videoMode: idea.videoMode || document.querySelector('input[name="videoMode"]:checked')?.value || 'short'
                 };
             });
 
@@ -1430,6 +1437,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         bgmMood: document.getElementById('bgm_mood').value,
                         visualEffect: document.getElementById('visual_effect').value || 'none',
                         vignette: document.getElementById('vignette').checked || false,
+                        videoMode: document.querySelector('input[name="videoMode"]:checked')?.value || 'short',
                         platforms: {
                             youtube:  document.getElementById('target-youtube')?.checked !== false,
                             facebook: document.getElementById('target-facebook')?.checked !== false,

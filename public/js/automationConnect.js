@@ -164,6 +164,11 @@ window.initAutomationConnect = function() {
                 const schedVignette = document.getElementById('scheduler-vignette');
                 if (schedEffect) schedEffect.value = config.visualEffect || 'none';
                 if (schedVignette) schedVignette.checked = !!config.vignette;
+
+                if (config.videoMode) {
+                    const modeRadio = document.querySelector(`input[name="videoMode"][value="${config.videoMode}"]`);
+                    if (modeRadio) modeRadio.checked = true;
+                }
             } else {
                 console.error('Failed to fetch scheduler status: data.success is false');
             }
@@ -225,6 +230,7 @@ window.initAutomationConnect = function() {
                     bgmMood: document.getElementById('bgm_mood') ? document.getElementById('bgm_mood').value : 'upbeat',
                     visualEffect: document.getElementById('visual_effect') ? document.getElementById('visual_effect').value || 'none' : 'none',
                     vignette: document.getElementById('vignette') ? document.getElementById('vignette').checked || false : false,
+                    videoMode: document.querySelector('input[name="videoMode"]:checked')?.value || 'short',
                     privacyStatus: schedulerPrivacySelect ? schedulerPrivacySelect.value : 'private',
                     publishAt: publishAt,
                     provider: aiCfg.provider,
@@ -269,7 +275,8 @@ window.initAutomationConnect = function() {
                 schedule: schedulerCronInput ? schedulerCronInput.value : '',
                 privacyStatus: schedulerPrivacySelect ? schedulerPrivacySelect.value : 'private',
                 visualEffect: schedEffect ? schedEffect.value : 'none',
-                vignette: schedVignette ? schedVignette.checked : false
+                vignette: schedVignette ? schedVignette.checked : false,
+                videoMode: document.querySelector('input[name="videoMode"]:checked')?.value || 'short'
             });
             alert('Pengaturan jadwal berhasil disimpan!');
         });
